@@ -8,8 +8,9 @@ click==7.1.2
 click-default-group==1.2.2
 colorama==0.4.4
 datasette==0.50.2
--e git+https://github.com/drkane/datasette-reconcile.git@f1606491fdee4ac8b81c18d69fb9423e76d291fb#egg=datasette_reconcile
+-e git+https://github.com/drkane/datasette-reconcile.git@1230399dc0945f7a688a77fa1aee44b4b41cfbc3#egg=datasette_reconcile
 dateparser==0.7.6
+fuzzywuzzy==0.18.0
 h11==0.11.0
 httpcore==0.12.0
 httpx==0.16.1
@@ -31,6 +32,7 @@ pytest==6.1.1
 pytest-asyncio==0.14.0
 python-baseconv==1.2.2
 python-dateutil==2.8.1
+python-Levenshtein==0.12.0
 python-multipart==0.0.5
 pytz==2020.1
 PyYAML==5.3.1

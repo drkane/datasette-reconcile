@@ -1,8 +1,13 @@
-from datasette.utils.asgi import Response, NotFound, Forbidden
-from datasette.utils import escape_sqlite
-from datasette import hookimpl
 import html
 import json
+import warnings
+
+from datasette.utils.asgi import Response, NotFound, Forbidden
+from datasette.utils import escape_sqlite, escape_fts
+from datasette import hookimpl
+import sqlite3
+
+from fuzzywuzzy import fuzz
 
 
 DEFAULT_LIMIT = 5
@@ -62,6 +67,12 @@ async def check_config(config, db, table):
         config['type_default'] = DEFAULT_TYPE
     
     config['fts_table'] = await db.fts_table(table)
+
+    # let's show a warning if sqlite3 version is less than 3.30.0
+    # full text search results will fail for < 3.30.0 if the table
+    # name contains special characters
+    if config['fts_table'] and ((sqlite3.sqlite_version_info[0] == 3 and sqlite3.sqlite_version_info[1] < 30) or sqlite3.sqlite_version_info[0] < 3):
+        warnings.warn("Full Text Search queries for sqlite3 version < 3.30.0 wil fail if table name contains special characters")
     
     return config
 
@@ -120,16 +131,27 @@ async def reconcile_queries(queries, config, db, table):
             config.get('max_limit', DEFAULT_LIMIT)
         )
 
-        where_clauses = []
+        where_clauses = ["1"]
+        from_clause = escape_sqlite(table)
+        order_by = ""
         params = {}
         if config['fts_table']:
-            where_clauses.append(
-                "rowid in (select rowid from {fts_table} where {fts_table} match :search_query)".format(
-                    fts_table=escape_sqlite(config['fts_table']),
-                    match_clause=":search_query",
-                )
+            # NB this will fail if the table name has non-alphanumeric 
+            # characters in and sqlite3 version < 3.30.0
+            # see: https://www.sqlite.org/src/info/00e9a8f2730eb723
+            from_clause = """
+            {table} 
+            inner join (
+                    SELECT "rowid", "rank"
+                    FROM {fts_table} 
+                    WHERE {fts_table} MATCH :search_query
+            ) as "a" on {table}."rowid" = a."rowid"
+            """.format(
+                table=escape_sqlite(table),
+                fts_table=escape_sqlite(config['fts_table']),
             )
-            params["search_query"] = query['query']
+            order_by = "order by a.rank"
+            params["search_query"] = escape_fts(query["query"])
         else:
             where_clauses.append(
                 "{search_col} like :search_query".format(
@@ -138,22 +160,26 @@ async def reconcile_queries(queries, config, db, table):
             )
             params["search_query"] = f"%{query['query']}%"
 
-        query_results = await db.execute(
-            "select {} from {} where {} limit {}".format(
-                ",".join([escape_sqlite(f) for f in select_fields]),
-                escape_sqlite(table),
-                " and ".join(where_clauses),
-                limit,
-            ),
-            params
+        query_sql = "select {select_fields} from {from_clause} where {where_clause} {order_by} limit {limit}".format(
+            select_fields=",".join([escape_sqlite(f) for f in select_fields]),
+            from_clause=from_clause,
+            where_clause=" and ".join(where_clauses),
+            order_by=order_by,
+            limit=limit,
         )
-        yield query_id, [{
+        query_sql = " ".join([s.strip() for s in query_sql.splitlines()])
+        query_results = [{
             "id": r[config['id_field']],
             "name": r[config['name_field']],
             "type": r[config['type_field']] if config.get('type_field') and config['type_field'] in r else config['type_default'],
-            "score": 100,
-            "match": query['query'] == config['name_field'],
-        } for r in query_results]
+            "score": fuzz.ratio(
+                str(r[config['name_field']]).lower(),
+                str(query['query']).lower()
+            ),
+            "match": query['query'].lower().strip() == config['name_field'].lower().strip(),
+        } for r in await db.execute(query_sql, params)]
+        query_results = sorted(query_results, key=lambda x: -x['score'])
+        yield query_id, query_results
 
 
 @hookimpl
