@@ -30,6 +30,6 @@ setup(
     entry_points={"datasette": ["reconcile = datasette_reconcile"]},
     install_requires=["datasette", "fuzzywuzzy[speedup]"],
     extras_require={"test": ["pytest", "pytest-asyncio", "httpx"]},
-    tests_require=["datasette-reconcile[test]"],
+    tests_require=["datasette-reconcile[test]", "sqlite-utils"],
     python_requires=">=3.6",
 )
