@@ -5,6 +5,12 @@ from setuptools import setup
 VERSION = "0.1.1"
 
 
+"""
+python setup.py sdist bdist_wheel
+python -m twine upload dist/*
+"""
+
+
 def get_long_description():
     with open(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "README.md"),
@@ -19,6 +25,7 @@ setup(
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
     author="David Kane",
+    author_email="david@dkane.net",
     url="https://github.com/drkane/datasette-reconcile",
     project_urls={
         "Issues": "https://github.com/drkane/datasette-reconcile/issues",
