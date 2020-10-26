@@ -47,4 +47,4 @@ async def reconcile(request, datasette):
 
 @hookimpl
 def register_routes():
-    return [(r"/(?P<db_name>[^/]+)/(?P<db_table>[^/]+?)/reconcile$", reconcile)]
+    return [(r"/(?P<db_name>[^/]+)/(?P<db_table>[^/]+?)/-/reconcile$", reconcile)]

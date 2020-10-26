@@ -9,7 +9,7 @@ Adds a reconciliation API endpoint to [Datasette](https://docs.datasette.io/en/s
 
 The reconciliation API is used to match a set of strings to their correct identifiers, to help with disambiguation and consistency in large datasets. For example, the strings "United Kingdom", "United Kingdom of Great Britain and Northern Ireland" and "UK" could all be used to identify the country which has the ISO country code `GB`. It is particularly implemented in [OpenRefine](https://openrefine.org/).
 
-The plugin adds a `/reconcile` endpoint to a table served by datasette, which responds based on the Reconciliation Service API specification. In order to activate this endpoint you need to configure the reconciliation service, as dscribed in the [usage](#usage) section.
+The plugin adds a `/-/reconcile` endpoint to a table served by datasette, which responds based on the Reconciliation Service API specification. In order to activate this endpoint you need to configure the reconciliation service, as dscribed in the [usage](#usage) section.
 
 ## Installation
 
@@ -62,9 +62,9 @@ The rest of the configuration items are optional, and are as follows:
 
 ### Using the endpoint
 
-Once the plugin is configured for a particular database or table, you can access the reconciliation endpoint using the url `/<db_name>/<table>/reconcile`.
+Once the plugin is configured for a particular database or table, you can access the reconciliation endpoint using the url `/<db_name>/<table>/-/reconcile`.
 
-A simple GET request to `/<db_name>/<table>/reconcile` will return the [Service Manifest](https://reconciliation-api.github.io/specs/latest/#service-manifest) as JSON which reconciliation clients can use to determine how the service is set up.
+A simple GET request to `/<db_name>/<table>/-/reconcile` will return the [Service Manifest](https://reconciliation-api.github.io/specs/latest/#service-manifest) as JSON which reconciliation clients can use to determine how the service is set up.
 
 A POST request to the same url with the `queries` argument set will trigger the reconciliation process. The `queries` parameter should be a json object in the format described in [the specification](https://reconciliation-api.github.io/specs/latest/#reconciliation-queries). An example set of two queries would look like:
 
@@ -82,7 +82,7 @@ A POST request to the same url with the `queries` argument set will trigger the 
 The query can optionally be encoded as a `queries` parameter in a GET request. For example:
 
 ```
-/<db_name>/<table>/reconcile?queries={"q1":{"query":"Hans-Eberhard Urbaniak"},"q2":{"query": "Ernst Schwanhold"}}
+/<db_name>/<table>/-/reconcile?queries={"q1":{"query":"Hans-Eberhard Urbaniak"},"q2":{"query": "Ernst Schwanhold"}}
 ```
 
 Various options are available in the query object. Current the only ones implemented in datasette-reconcile are the mandatory `query` string, and the `limit` option, which must be less than or equal to the value in the `max_limit` configration option.
@@ -130,6 +130,33 @@ The result of the GET or POST `queries` requests described above is a json objec
     ]
   }
 }
+```
+
+### Behind the scenes
+
+The reconcile engine works by performing an SQL query against the `name_field` within the specified database table. Where that table has a full text search index implemented, the search will be performed against that index.
+
+When a full text search index is present on the table, the SQL query takes the form (based on the search query `test`, note that double quotes are added to facilitate searching - these are not present in the original query):
+
+```sql
+select <id_field>, <name_field>
+from <table>
+  inner join (
+    select "rowid", "rank"
+    from <fts_table> 
+    where <fts_table> MATCH '"test"'
+  ) as "a" on <table>."rowid" = a."rowid"
+order by a.rank
+limit 5
+```
+
+If a full text search index is not present, the query looks like this (note that the wildcard `%` is added to either side of the query - these are not present in the original query):
+
+```sql
+select <id_field>, <name_field>
+from <table>
+where <name_field> like '%test%'
+limit 5
 ```
 
 ## Development

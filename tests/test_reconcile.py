@@ -21,7 +21,7 @@ async def test_plugin_is_installed():
 async def test_response_not_configured(db_path):
     app = Datasette([db_path]).app()
     async with httpx.AsyncClient(app=app) as client:
-        response = await client.get("http://localhost/test/dogs/reconcile")
+        response = await client.get("http://localhost/test/dogs/-/reconcile")
         assert 404 == response.status_code
 
 
@@ -29,7 +29,7 @@ async def test_response_not_configured(db_path):
 async def test_response_without_query(db_path):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
     async with httpx.AsyncClient(app=app) as client:
-        response = await client.get("http://localhost/test/dogs/reconcile")
+        response = await client.get("http://localhost/test/dogs/-/reconcile")
         assert 200 == response.status_code
         data = response.json()
         assert "name" in data.keys()
@@ -40,7 +40,7 @@ async def test_response_queries_post(db_path):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
     async with httpx.AsyncClient(app=app) as client:
         response = await client.post(
-            "http://localhost/test/dogs/reconcile",
+            "http://localhost/test/dogs/-/reconcile",
             data={"queries": json.dumps({"q0": {"query": "fido"}})},
         )
         assert 200 == response.status_code
@@ -59,7 +59,7 @@ async def test_response_queries_get(db_path):
     async with httpx.AsyncClient(app=app) as client:
         queries = json.dumps({"q0": {"query": "fido"}})
         response = await client.get(
-            "http://localhost/test/dogs/reconcile?queries={}".format(queries)
+            "http://localhost/test/dogs/-/reconcile?queries={}".format(queries)
         )
         assert 200 == response.status_code
         data = response.json()
