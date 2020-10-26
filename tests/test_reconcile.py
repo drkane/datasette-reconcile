@@ -1,37 +1,10 @@
+import json
+
 from datasette.app import Datasette
 import pytest
 import httpx
-import sqlite_utils
 
-from datasette_reconcile import check_config, ReconcileError
-
-@pytest.fixture(scope="session")
-def ds(tmp_path_factory):
-    db_directory = tmp_path_factory.mktemp("dbs")
-    db_path = db_directory / "test.db"
-    db = sqlite_utils.Database(db_path)
-    db["dogs"].insert_all([
-        {"id": 1, "name": "Cleo", "age": 5, "status": "good dog"},
-        {"id": 2, "name": "Pancakes", "age": 4, "status": "bad dog"},
-        {"id": 3, "name": "Fido", "age": 3, "status": "bad dog"},
-        {"id": 4, "name": "Scratch", "age": 3, "status": "good dog"},
-    ], pk="id")
-    ds = Datasette(
-        [db_path],
-        metadata={
-            "databases": {
-                "test": {
-                    "tables": {
-                        "dogs": {
-                            "title": "Some dogs"
-                        }
-                    }
-                }
-            }
-        }
-    )
-    return ds
-
+from tests.fixtures import db_path, plugin_metadata
 
 @pytest.mark.asyncio
 async def test_plugin_is_installed():
@@ -44,81 +17,65 @@ async def test_plugin_is_installed():
 
 
 @pytest.mark.asyncio
-async def test_plugin_configuration_missing(ds):
-    with pytest.raises(ReconcileError, match="datasette-reconcile not configured .*"):
-        config = await check_config({}, ds.get_database('test'), 'dogs')
+async def test_response_not_configured(db_path):
+    app = Datasette([db_path]).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.get("http://localhost/test/dogs/reconcile")
+        assert 404 == response.status_code
 
 
 @pytest.mark.asyncio
-async def test_plugin_configuration_no_name(ds):
-    with pytest.raises(ReconcileError, match="Name field must be defined to activate reconciliation"):
-        config = await check_config({
-            'id_field': 'id'
-        }, ds.get_database('test'), 'dogs')
+async def test_response_without_query(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({
+        "name_field": "name"
+    })).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.get("http://localhost/test/dogs/reconcile")
+        assert 200 == response.status_code
+        data = response.json()
+        assert "name" in data.keys()
 
 
 @pytest.mark.asyncio
-async def test_plugin_configuration_table_not_found(ds):
-    with pytest.raises(ReconcileError, match="Table not found: test"):
-        config = await check_config({
-            'name_field': 'name'
-        }, ds.get_database('test'), 'test')
+async def test_response_queries_post(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({
+        "name_field": "name"
+    })).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.post("http://localhost/test/dogs/reconcile", data={
+            "queries": json.dumps({
+                "q0": {
+                    "query": "fido"
+                }
+            })
+        })
+        assert 200 == response.status_code
+        data = response.json()
+        assert "q0" in data.keys()
+        assert len(data["q0"]) == 1
+        result = data["q0"][0]
+        assert result["id"] == 3
+        assert result["name"] == "Fido"
+        assert result["score"] == 100
 
 
 @pytest.mark.asyncio
-async def test_plugin_configuration_use_pk(ds):
-    config = await check_config({
-        'name_field': 'name'
-    }, ds.get_database('test'), 'dogs')
-    assert config['name_field'] == 'name'
-    assert config['id_field'] == 'id'
-    assert config['type_default'] == 'Object'
-    assert "type_field" not in config
-
-
-@pytest.mark.asyncio
-async def test_plugin_configuration_use_id_field(ds):
-    config = await check_config({
-        'name_field': 'name',
-        'id_field': 'id',
-    }, ds.get_database('test'), 'dogs')
-    assert config['name_field'] == 'name'
-    assert config['id_field'] == 'id'
-    assert config['type_default'] == 'Object'
-    assert "type_field" not in config
-
-
-@pytest.mark.asyncio
-async def test_plugin_configuration_use_type_field(ds):
-    config = await check_config({
-        'name_field': 'name',
-        'id_field': 'id',
-        'type_field': 'status',
-    }, ds.get_database('test'), 'dogs')
-    assert config['name_field'] == 'name'
-    assert config['id_field'] == 'id'
-    assert config['type_field'] == 'status'
-    assert 'type_default' not in config
-
-
-@pytest.mark.asyncio
-async def test_plugin_configuration_use_type_default(ds):
-    config = await check_config({
-        'name_field': 'name',
-        'id_field': 'id',
-        'type_default': 'dog',
-    }, ds.get_database('test'), 'dogs')
-    assert config['name_field'] == 'name'
-    assert config['id_field'] == 'id'
-    assert config['type_default'] == 'dog'
-    assert 'type_field' not in config
-
-
-@pytest.mark.asyncio
-async def test_plugin_configuration_use_fts_table(ds):
-    config = await check_config({
-        'name_field': 'name',
-        'id_field': 'id',
-        'type_default': 'dog',
-    }, ds.get_database('test'), 'dogs')
-    assert config['fts_table'] is None
+async def test_response_queries_get(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({
+        "name_field": "name"
+    })).app()
+    async with httpx.AsyncClient(app=app) as client:
+        queries = json.dumps({
+                "q0": {
+                    "query": "fido"
+                }
+            })
+        response = await client.get("http://localhost/test/dogs/reconcile?queries={}".format(queries))
+        assert 200 == response.status_code
+        data = response.json()
+        assert "q0" in data.keys()
+        assert len(data["q0"]) == 1
+        result = data["q0"][0]
+        assert result["id"] == 3
+        assert result["name"] == "Fido"
+        assert result["score"] == 100

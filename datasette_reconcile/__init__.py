@@ -48,10 +48,10 @@ async def check_config(config, db, table):
     is_view = bool(await db.get_view_definition(table))
     table_exists = bool(await db.table_exists(table))
     if not is_view and not table_exists:
-        raise ReconcileError("Table not found: {}".format(table))
+        raise NotFound("Table not found: {}".format(table))
 
     if not config:
-        raise ReconcileError("datasette-reconcile not configured for table {} in database {}".format(table, str(db)))
+        raise NotFound("datasette-reconcile not configured for table {} in database {}".format(table, str(db)))
     
     pks = await db.primary_keys(table)
     if not pks:
@@ -99,8 +99,11 @@ async def reconcile(request, datasette):
         datasette
     )
 
-    if request.args.get("queries"):
-        queries = json.loads(request.args["queries"])
+    print(request.args)
+    post_vars = await request.post_vars()
+    queries = post_vars.get("queries", request.args.get("queries"))
+    if queries:
+        queries = json.loads(queries)
         return Response.json({
             q[0]: q[1] async for q in reconcile_queries(queries, config, db, table)
         })
