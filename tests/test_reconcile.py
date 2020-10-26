@@ -1,10 +1,11 @@
 import json
 
-from datasette.app import Datasette
-import pytest
 import httpx
+import pytest
+from datasette.app import Datasette
 
 from tests.fixtures import db_path, plugin_metadata
+
 
 @pytest.mark.asyncio
 async def test_plugin_is_installed():
@@ -26,9 +27,7 @@ async def test_response_not_configured(db_path):
 
 @pytest.mark.asyncio
 async def test_response_without_query(db_path):
-    app = Datasette([db_path], metadata=plugin_metadata({
-        "name_field": "name"
-    })).app()
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
     async with httpx.AsyncClient(app=app) as client:
         response = await client.get("http://localhost/test/dogs/reconcile")
         assert 200 == response.status_code
@@ -38,17 +37,12 @@ async def test_response_without_query(db_path):
 
 @pytest.mark.asyncio
 async def test_response_queries_post(db_path):
-    app = Datasette([db_path], metadata=plugin_metadata({
-        "name_field": "name"
-    })).app()
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
     async with httpx.AsyncClient(app=app) as client:
-        response = await client.post("http://localhost/test/dogs/reconcile", data={
-            "queries": json.dumps({
-                "q0": {
-                    "query": "fido"
-                }
-            })
-        })
+        response = await client.post(
+            "http://localhost/test/dogs/reconcile",
+            data={"queries": json.dumps({"q0": {"query": "fido"}})},
+        )
         assert 200 == response.status_code
         data = response.json()
         assert "q0" in data.keys()
@@ -61,16 +55,12 @@ async def test_response_queries_post(db_path):
 
 @pytest.mark.asyncio
 async def test_response_queries_get(db_path):
-    app = Datasette([db_path], metadata=plugin_metadata({
-        "name_field": "name"
-    })).app()
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
     async with httpx.AsyncClient(app=app) as client:
-        queries = json.dumps({
-                "q0": {
-                    "query": "fido"
-                }
-            })
-        response = await client.get("http://localhost/test/dogs/reconcile?queries={}".format(queries))
+        queries = json.dumps({"q0": {"query": "fido"}})
+        response = await client.get(
+            "http://localhost/test/dogs/reconcile?queries={}".format(queries)
+        )
         assert 200 == response.status_code
         data = response.json()
         assert "q0" in data.keys()

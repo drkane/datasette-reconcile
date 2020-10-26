@@ -27,4 +27,7 @@ jobs:
     - name: Run tests
       run: |
         pytest
-
+    - name: Run linting
+      run: |
+        black ./ --check
+        isort ./ --check

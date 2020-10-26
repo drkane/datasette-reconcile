@@ -29,7 +29,7 @@ setup(
     packages=["datasette_reconcile"],
     entry_points={"datasette": ["reconcile = datasette_reconcile"]},
     install_requires=["datasette", "fuzzywuzzy[speedup]"],
-    extras_require={"test": ["pytest", "pytest-asyncio", "httpx", "sqlite-utils"]},
+    extras_require={"test": ["pytest", "pytest-asyncio", "httpx", "sqlite-utils", "black", "isort"]},
     tests_require=["datasette-reconcile[test]"],
     python_requires=">=3.6",
 )
