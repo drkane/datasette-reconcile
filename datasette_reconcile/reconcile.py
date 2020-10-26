@@ -1,8 +1,13 @@
 from datasette.utils import escape_fts, escape_sqlite
 from fuzzywuzzy import fuzz
 
-from datasette_reconcile.settings import DEFAULT_LIMIT
-from datasette_reconcile.utils import get_select_fields
+from datasette_reconcile.settings import (
+    DEFAULT_IDENTIFER_SPACE,
+    DEFAULT_LIMIT,
+    DEFAULT_SCHEMA_SPACE,
+    DEFAULT_TYPE,
+)
+from datasette_reconcile.utils import get_select_fields, get_view_url
 
 
 async def reconcile_queries(queries, config, db, table):
@@ -50,7 +55,6 @@ async def reconcile_queries(queries, config, db, table):
             order_by=order_by,
             limit=limit,
         )
-        query_sql = " ".join([s.strip() for s in query_sql.splitlines()])
         query_results = [
             {
                 "id": r[config["id_field"]],
@@ -68,3 +72,20 @@ async def reconcile_queries(queries, config, db, table):
         ]
         query_results = sorted(query_results, key=lambda x: -x["score"])
         yield query_id, query_results
+
+
+def service_manifest(config, database, table, datasette):
+    return {
+        "versions": ["0.1", "0.2"],
+        "name": config.get(
+            "service_name",
+            "{database} {table} reconciliation".format(
+                database=database,
+                table=table,
+            ),
+        ),
+        "identifierSpace": config.get("identifierSpace", DEFAULT_IDENTIFER_SPACE),
+        "schemaSpace": config.get("schemaSpace", DEFAULT_SCHEMA_SPACE),
+        "defaultTypes": config.get("type_default", [DEFAULT_TYPE]),
+        "view": get_view_url(datasette, database, table),
+    }

@@ -1,3 +1,4 @@
+import sqlite3
 import warnings
 
 from datasette.utils.asgi import Forbidden, NotFound, Response
@@ -62,6 +63,8 @@ async def check_config(config, db, table):
         raise ReconcileError("Name field must be defined to activate reconciliation")
     if "type_field" not in config and "type_default" not in config:
         config["type_default"] = DEFAULT_TYPE
+    if "max_limit" in config and not isinstance(config["max_limit"], int):
+        raise TypeError("max_limit in reconciliation config must be an integer")
 
     config["fts_table"] = await db.fts_table(table)
 
@@ -86,3 +89,17 @@ def get_select_fields(config):
     if config.get("type_field"):
         select_fields.append(config["type_field"])
     return select_fields
+
+
+def get_view_url(ds, database, table):
+    id_str = "{{id}}"
+    if hasattr(ds, "urls"):
+        return ds.urls.row(database, table, id_str)
+    db = ds.databases[database]
+    base_url = ds.config("base_url")
+    if ds.config("hash_urls") and db.hash:
+        return "{}{}-{}/{}/{}".format(
+            base_url, database, db.hash[:HASH_LENGTH], table, id_str
+        )
+    else:
+        return "{}{}/{}/{}".format(base_url, database, table, id_str)

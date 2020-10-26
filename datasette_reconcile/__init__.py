@@ -6,7 +6,7 @@ import warnings
 from datasette import hookimpl
 from datasette.utils.asgi import Response
 
-from datasette_reconcile.reconcile import reconcile_queries
+from datasette_reconcile.reconcile import reconcile_queries, service_manifest
 from datasette_reconcile.utils import check_config, check_permissions
 
 
@@ -15,11 +15,13 @@ async def reconcile(request, datasette):
     table = request.url_vars["db_table"]
     db = datasette.get_database(database)
 
+    # get plugin configuration
     config = datasette.plugin_config(
         "datasette-reconcile", database=database, table=table
     )
     config = await check_config(config, db, table)
 
+    # check user can at least view this table
     await check_permissions(
         request,
         [
@@ -30,6 +32,7 @@ async def reconcile(request, datasette):
         datasette,
     )
 
+    # work out if we are looking for queries
     post_vars = await request.post_vars()
     queries = post_vars.get("queries", request.args.get("queries"))
     if queries:
@@ -38,13 +41,8 @@ async def reconcile(request, datasette):
             {q[0]: q[1] async for q in reconcile_queries(queries, config, db, table)}
         )
 
-    return Response.json(
-        {
-            "name": "VIAF",
-            "identifierSpace": "http://vocab.getty.edu/doc/#GVP_URLs_and_Prefixes",
-            "schemaSpace": "http://vocab.getty.edu/doc/#The_Getty_Vocabularies_and_LOD",
-        }
-    )
+    # if we're not then just return the service specification
+    return Response.json(service_manifest(config, database, table, datasette))
 
 
 @hookimpl
