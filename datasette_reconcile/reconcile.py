@@ -56,7 +56,7 @@ async def reconcile_queries(queries, config, db, table):
             limit=limit,
         )
         query_results = [
-            get_query_result(r) for r in await db.execute(query_sql, params)
+            get_query_result(r, config, query) for r in await db.execute(query_sql, params)
         ]
         query_results = sorted(query_results, key=lambda x: -x["score"])
         yield query_id, query_results
@@ -64,7 +64,7 @@ async def reconcile_queries(queries, config, db, table):
 
 def get_query_result(row, config, query):
     name = row[config["name_field"]]
-    name_match = str(name).lower(), strip()
+    name_match = str(name).lower().strip()
     query_match = str(query["query"]).lower().strip()
     type_ = config.get("type_default", DEFAULT_TYPE)
     if config.get("type_field") and config["type_field"] in row:
