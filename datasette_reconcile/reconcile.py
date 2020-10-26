@@ -56,7 +56,8 @@ async def reconcile_queries(queries, config, db, table):
             limit=limit,
         )
         query_results = [
-            get_query_result(r, config, query) for r in await db.execute(query_sql, params)
+            get_query_result(r, config, query)
+            for r in await db.execute(query_sql, params)
         ]
         query_results = sorted(query_results, key=lambda x: -x["score"])
         yield query_id, query_results
