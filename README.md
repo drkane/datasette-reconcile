@@ -5,7 +5,7 @@
 [![Tests](https://github.com/drkane/datasette-reconcile/workflows/Test/badge.svg)](https://github.com/drkane/datasette-reconcile/actions?query=workflow%3ATest)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/drkane/datasette-reconcile/blob/main/LICENSE)
 
-Adds a reconciliation API endpoint to Datasette, based on the [Reconciliation Service API](https://reconciliation-api.github.io/specs/latest/) specification.
+Adds a reconciliation API endpoint to [Datasette](https://docs.datasette.io/en/stable/), based on the [Reconciliation Service API](https://reconciliation-api.github.io/specs/latest/) specification.
 
 The reconciliation API is used to match a set of strings to their correct identifiers, to help with disambiguation and consistency in large datasets. For example, the strings "United Kingdom", "United Kingdom of Great Britain and Northern Ireland" and "UK" could all be used to identify the country which has the ISO country code `GB`. It is particularly implemented in [OpenRefine](https://openrefine.org/).
 
