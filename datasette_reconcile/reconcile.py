@@ -56,22 +56,26 @@ async def reconcile_queries(queries, config, db, table):
             limit=limit,
         )
         query_results = [
-            {
-                "id": r[config["id_field"]],
-                "name": r[config["name_field"]],
-                "type": r[config["type_field"]]
-                if config.get("type_field") and config["type_field"] in r
-                else config["type_default"],
-                "score": fuzz.ratio(
-                    str(r[config["name_field"]]).lower(), str(query["query"]).lower()
-                ),
-                "match": query["query"].lower().strip()
-                == config["name_field"].lower().strip(),
-            }
-            for r in await db.execute(query_sql, params)
+            get_query_result(r) for r in await db.execute(query_sql, params)
         ]
         query_results = sorted(query_results, key=lambda x: -x["score"])
         yield query_id, query_results
+
+
+def get_query_result(row, config, query):
+    name = row[config["name_field"]]
+    name_match = str(name).lower(), strip()
+    query_match = str(query["query"]).lower().strip()
+    type_ = config.get("type_default", DEFAULT_TYPE)
+    if config.get("type_field") and config["type_field"] in row:
+        type_ = row[config["type_field"]]
+    return {
+        "id": row[config["id_field"]],
+        "name": name,
+        "type": {"id": type_},
+        "score": fuzz.ratio(name_match, query_match),
+        "match": name_match == query_match,
+    }
 
 
 def service_manifest(config, database, table, datasette):
