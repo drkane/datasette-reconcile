@@ -1,5 +1,6 @@
-from setuptools import setup
 import os
+
+from setuptools import setup
 
 VERSION = "0.1"
 
@@ -29,7 +30,9 @@ setup(
     packages=["datasette_reconcile"],
     entry_points={"datasette": ["reconcile = datasette_reconcile"]},
     install_requires=["datasette", "fuzzywuzzy[speedup]"],
-    extras_require={"test": ["pytest", "pytest-asyncio", "httpx", "sqlite-utils", "black", "isort"]},
+    extras_require={
+        "test": ["pytest", "pytest-asyncio", "httpx", "sqlite-utils", "black", "isort"]
+    },
     tests_require=["datasette-reconcile[test]"],
     python_requires=">=3.6",
 )
