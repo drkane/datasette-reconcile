@@ -1,0 +1,2 @@
+DEFAULT_LIMIT = 5
+DEFAULT_TYPE = "Object"

@@ -4,7 +4,7 @@ import sqlite_utils
 from datasette.app import Datasette
 from datasette.utils.asgi import NotFound
 
-from datasette_reconcile import ReconcileError, check_config
+from datasette_reconcile.utils import ReconcileError, check_config
 from tests.fixtures import ds
 
 

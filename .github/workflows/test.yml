@@ -30,4 +30,4 @@ jobs:
     - name: Run linting
       run: |
         black ./ --check
-        isort ./ --check
+        isort ./ --check --multi-line=3 --trailing-comma --force-grid-wrap=0 --use-parentheses --line-width=88
