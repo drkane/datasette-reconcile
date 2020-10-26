@@ -60,6 +60,77 @@ The rest of the configuration items are optional, and are as follows:
 - `identifierSpace`: [Identifier space](https://reconciliation-api.github.io/specs/latest/#identifier-and-schema-spaces) given in the service manifest. If not provided a default of `http://rdf.freebase.com/ns/type.object.id` is used.
 - `schemaSpace`: [Schema space](https://reconciliation-api.github.io/specs/latest/#identifier-and-schema-spaces) given in the service manifest. If not provided a default of `http://rdf.freebase.com/ns/type.object.id` is used.
 
+### Using the endpoint
+
+Once the plugin is configured for a particular database or table, you can access the reconciliation endpoint using the url `/<db_name>/<table>/reconcile`.
+
+A simple GET request to `/<db_name>/<table>/reconcile` will return the [Service Manifest](https://reconciliation-api.github.io/specs/latest/#service-manifest) as JSON which reconciliation clients can use to determine how the service is set up.
+
+A POST request to the same url with the `queries` argument set will trigger the reconciliation process. The `queries` parameter should be a json object in the format described in [the specification](https://reconciliation-api.github.io/specs/latest/#reconciliation-queries). An example set of two queries would look like:
+
+```json
+{
+  "q1": {
+    "query": "Hans-Eberhard Urbaniak"
+  },
+  "q2": {
+    "query": "Ernst Schwanhold"
+  }
+}
+```
+
+The query can optionally be encoded as a `queries` parameter in a GET request. For example:
+
+```
+/<db_name>/<table>/reconcile?queries={"q1":{"query":"Hans-Eberhard Urbaniak"},"q2":{"query": "Ernst Schwanhold"}}
+```
+
+Various options are available in the query object. Current the only ones implemented in datasette-reconcile are the mandatory `query` string, and the `limit` option, which must be less than or equal to the value in the `max_limit` configration option.
+
+### Returned value
+
+The result of the GET or POST `queries` requests described above is a json object describing potential [reconciliation candidates](https://reconciliation-api.github.io/specs/latest/#reconciliation-query-responses) for each of the queries specified. The result will look something like:
+
+```json
+{
+  "q1": {
+    "result": [
+      {
+        "id": "120333937",
+        "name": "Urbaniak, Regina",
+        "score": 53.015232,
+        "match": false,
+        "type": "Person"
+      },
+      {
+        "id": "1127147390",
+        "name": "Urbaniak, Jan",
+        "score": 52.357353,
+        "match": false,
+        "type": "Person"
+      }
+    ]
+  },
+  "q2": {
+    "result": [
+      {
+        "id": "123064325",
+        "name": "Schwanhold, Ernst",
+        "score": 86.43497,
+        "match": true,
+        "type": "Person"
+      },
+      {
+        "id": "116362988X",
+        "name": "Schwanhold, Nadine",
+        "score": 62.04763,
+        "match": false,
+        "type": "Person"
+      }
+    ]
+  }
+}
+```
 
 ## Development
 
