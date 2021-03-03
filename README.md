@@ -87,6 +87,10 @@ The query can optionally be encoded as a `queries` parameter in a GET request. F
 
 Various options are available in the query object. Current the only ones implemented in datasette-reconcile are the mandatory `query` string, and the `limit` option, which must be less than or equal to the value in the `max_limit` configration option.
 
+All endpoints that start with `/<db_name>/<table>/-/reconcile` are configured to send an `Access-Control-Allow-Origin: *` CORS header to allow access [as described in the specification](https://reconciliation-api.github.io/specs/latest/#cross-origin-access).
+
+JSONP output is not yet supported.
+
 ### Returned value
 
 The result of the GET or POST `queries` requests described above is a json object describing potential [reconciliation candidates](https://reconciliation-api.github.io/specs/latest/#reconciliation-query-responses) for each of the queries specified. The result will look something like:
