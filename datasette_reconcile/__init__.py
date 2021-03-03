@@ -38,11 +38,19 @@ async def reconcile(request, datasette):
     if queries:
         queries = json.loads(queries)
         return Response.json(
-            {q[0]: q[1] async for q in reconcile_queries(queries, config, db, table)}
+            {q[0]: q[1] async for q in reconcile_queries(queries, config, db, table)},
+            headers={
+                "Access-Control-Allow-Origin": "*",
+            },
         )
 
     # if we're not then just return the service specification
-    return Response.json(service_manifest(config, database, table, datasette))
+    return Response.json(
+        service_manifest(config, database, table, datasette),
+        headers={
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
 
 
 @hookimpl

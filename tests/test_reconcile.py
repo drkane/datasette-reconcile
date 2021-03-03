@@ -33,6 +33,7 @@ async def test_response_without_query(db_path):
         assert 200 == response.status_code
         data = response.json()
         assert "name" in data.keys()
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
 
 
 @pytest.mark.asyncio
@@ -51,6 +52,7 @@ async def test_response_queries_post(db_path):
         assert result["id"] == 3
         assert result["name"] == "Fido"
         assert result["score"] == 100
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
 
 
 @pytest.mark.asyncio
@@ -69,3 +71,4 @@ async def test_response_queries_get(db_path):
         assert result["id"] == 3
         assert result["name"] == "Fido"
         assert result["score"] == 100
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
