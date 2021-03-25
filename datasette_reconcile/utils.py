@@ -62,9 +62,19 @@ async def check_config(config, db, table):
     if "name_field" not in config:
         raise ReconcileError("Name field must be defined to activate reconciliation")
     if "type_field" not in config and "type_default" not in config:
-        config["type_default"] = DEFAULT_TYPE
+        config["type_default"] = [DEFAULT_TYPE]
     if "max_limit" in config and not isinstance(config["max_limit"], int):
         raise TypeError("max_limit in reconciliation config must be an integer")
+    if "type_default" in config:
+        if not isinstance(config["type_default"], list):
+            raise ReconcileError("type_default should be a list of objects")
+        for t in config["type_default"]:
+            if not isinstance(t, dict):
+                raise ReconcileError("type_default values should be objects")
+            if not isinstance(t.get("id"), str):
+                raise ReconcileError("type_default 'id' values should be strings")
+            if not isinstance(t.get("name"), str):
+                raise ReconcileError("type_default 'name' values should be strings")
 
     config["fts_table"] = await db.fts_table(table)
 

@@ -13,6 +13,7 @@ from datasette_reconcile.utils import get_select_fields, get_view_url
 async def reconcile_queries(queries, config, db, table):
     select_fields = get_select_fields(config)
     queries_results = {}
+    print(queries)
     for query_id, query in queries.items():
         limit = min(
             query.get("limit", config.get("max_limit", DEFAULT_LIMIT)),
@@ -60,6 +61,7 @@ async def reconcile_queries(queries, config, db, table):
             for r in await db.execute(query_sql, params)
         ]
         query_results = sorted(query_results, key=lambda x: -x["score"])
+        print(query_results)
         yield query_id, query_results
 
 
@@ -67,19 +69,25 @@ def get_query_result(row, config, query):
     name = row[config["name_field"]]
     name_match = str(name).lower().strip()
     query_match = str(query["query"]).lower().strip()
-    type_ = config.get("type_default", DEFAULT_TYPE)
+    type_ = config.get("type_default", [DEFAULT_TYPE])
+    if not isinstance(type_, list):
+        type_ = [type_]
     if config.get("type_field") and config["type_field"] in row:
-        type_ = row[config["type_field"]]
+        type_ = [{"id": row[config["type_field"]]}]
+
+    type_ = type_[0]
+
     return {
         "id": row[config["id_field"]],
         "name": name,
-        "type": {"id": type_},
+        "type": type_,
         "score": fuzz.ratio(name_match, query_match),
         "match": name_match == query_match,
     }
 
 
 def service_manifest(config, database, table, datasette):
+    # @todo: if type_field is set then get a list of types to use in the "defaultTypes" item below.
     return {
         "versions": ["0.1", "0.2"],
         "name": config.get(

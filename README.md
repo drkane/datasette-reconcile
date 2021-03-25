@@ -36,7 +36,10 @@ Add a `datasette-reconcile` object under `plugins` in `metadata.json`. This shou
                             "id_field": "id",
                             "name_field": "name",
                             "type_field": "type",
-                            "type_default": "Tree",
+                            "type_default": [{
+                              "id": "tree",
+                              "name": "Tree",
+                            }],
                             "max_limit": 5,
                             "service_name": "Tree reconciliation"
                         }
@@ -104,14 +107,20 @@ The result of the GET or POST `queries` requests described above is a json objec
         "name": "Urbaniak, Regina",
         "score": 53.015232,
         "match": false,
-        "type": "Person"
+        "type": [{
+          "id": "person",
+          "name": "Person",
+        }]
       },
       {
         "id": "1127147390",
         "name": "Urbaniak, Jan",
         "score": 52.357353,
         "match": false,
-        "type": "Person"
+        "type": [{
+          "id": "person",
+          "name": "Person",
+        }]
       }
     ]
   },
@@ -122,14 +131,20 @@ The result of the GET or POST `queries` requests described above is a json objec
         "name": "Schwanhold, Ernst",
         "score": 86.43497,
         "match": true,
-        "type": "Person"
+        "type": [{
+          "id": "person",
+          "name": "Person",
+        }]
       },
       {
         "id": "116362988X",
         "name": "Schwanhold, Nadine",
         "score": 62.04763,
         "match": false,
-        "type": "Person"
+        "type": [{
+          "id": "person",
+          "name": "Person",
+        }]
       }
     ]
   }
