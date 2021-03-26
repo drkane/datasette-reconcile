@@ -2,7 +2,7 @@ import os
 
 from setuptools import setup
 
-VERSION = "0.1.2"
+VERSION = "0.2.0"
 
 
 """
@@ -38,7 +38,7 @@ setup(
     entry_points={"datasette": ["reconcile = datasette_reconcile"]},
     install_requires=["datasette", "fuzzywuzzy[speedup]"],
     extras_require={
-        "test": ["pytest", "pytest-asyncio", "httpx", "sqlite-utils", "black", "isort"]
+        "test": ["pytest", "pytest-asyncio", "httpx", "sqlite-utils", "black", "isort", "jsonschema"]
     },
     tests_require=["datasette-reconcile[test]"],
     python_requires=">=3.6",
