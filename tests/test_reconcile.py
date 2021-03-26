@@ -33,8 +33,8 @@ async def test_response_without_query(db_path):
         assert 200 == response.status_code
         data = response.json()
         assert "name" in data.keys()
-        assert isinstance(data['defaultTypes'], list)
-        assert len(data['defaultTypes']) == 1
+        assert isinstance(data["defaultTypes"], list)
+        assert len(data["defaultTypes"]) == 1
         assert data["defaultTypes"][0]["id"] == "object"
         assert data["defaultTypes"][0]["name"] == "Object"
         assert response.headers["Access-Control-Allow-Origin"] == "*"
@@ -51,15 +51,17 @@ async def test_response_queries_post(db_path):
         assert 200 == response.status_code
         data = response.json()
         assert "q0" in data.keys()
-        assert len(data["q0"]) == 1
-        result = data["q0"][0]
-        assert result["id"] == 3
+        assert len(data["q0"]["result"]) == 1
+        result = data["q0"]["result"][0]
+        assert result["id"] == "3"
         assert result["name"] == "Fido"
         assert result["score"] == 100
-        assert result["type"] == [{
-            "name": "Object",
-            "id": "object",
-        }]
+        assert result["type"] == [
+            {
+                "name": "Object",
+                "id": "object",
+            }
+        ]
         assert response.headers["Access-Control-Allow-Origin"] == "*"
 
 
@@ -74,13 +76,15 @@ async def test_response_queries_get(db_path):
         assert 200 == response.status_code
         data = response.json()
         assert "q0" in data.keys()
-        assert len(data["q0"]) == 1
-        result = data["q0"][0]
-        assert result["id"] == 3
+        assert len(data["q0"]["result"]) == 1
+        result = data["q0"]["result"][0]
+        assert result["id"] == "3"
         assert result["name"] == "Fido"
         assert result["score"] == 100
-        assert result["type"] == [{
-            "name": "Object",
-            "id": "object",
-        }]
+        assert result["type"] == [
+            {
+                "name": "Object",
+                "id": "object",
+            }
+        ]
         assert response.headers["Access-Control-Allow-Origin"] == "*"

@@ -21,6 +21,8 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
         restore-keys: |
           ${{ runner.os }}-pip-
+    - name: Checkout submodules
+      uses: textbook/git-checkout-submodule-action@master
     - name: Install dependencies
       run: |
         pip install -e '.[test]'

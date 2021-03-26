@@ -13,7 +13,6 @@ from datasette_reconcile.utils import get_select_fields, get_view_url
 async def reconcile_queries(queries, config, db, table):
     select_fields = get_select_fields(config)
     queries_results = {}
-    print(queries)
     for query_id, query in queries.items():
         limit = min(
             query.get("limit", config.get("max_limit", DEFAULT_LIMIT)),
@@ -61,24 +60,19 @@ async def reconcile_queries(queries, config, db, table):
             for r in await db.execute(query_sql, params)
         ]
         query_results = sorted(query_results, key=lambda x: -x["score"])
-        print(query_results)
         yield query_id, query_results
 
 
 def get_query_result(row, config, query):
-    name = row[config["name_field"]]
+    name = str(row[config["name_field"]])
     name_match = str(name).lower().strip()
     query_match = str(query["query"]).lower().strip()
     type_ = config.get("type_default", [DEFAULT_TYPE])
-    if not isinstance(type_, list):
-        type_ = [type_]
     if config.get("type_field") and config["type_field"] in row:
-        type_ = [{"id": row[config["type_field"]]}]
-
-    type_ = type_[0]
+        type_ = [row[config["type_field"]]]
 
     return {
-        "id": row[config["id_field"]],
+        "id": str(row[config["id_field"]]),
         "name": name,
         "type": type_,
         "score": fuzz.ratio(name_match, query_match),
@@ -100,5 +94,7 @@ def service_manifest(config, database, table, datasette):
         "identifierSpace": config.get("identifierSpace", DEFAULT_IDENTIFER_SPACE),
         "schemaSpace": config.get("schemaSpace", DEFAULT_SCHEMA_SPACE),
         "defaultTypes": config.get("type_default", [DEFAULT_TYPE]),
-        "view": get_view_url(datasette, database, table),
+        "view": {
+            "url": get_view_url(datasette, database, table),
+        },
     }
