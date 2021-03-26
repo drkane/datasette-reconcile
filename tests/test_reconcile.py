@@ -88,3 +88,33 @@ async def test_response_queries_get(db_path):
             }
         ]
         assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+@pytest.mark.asyncio
+async def test_response_queries_no_results_post(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.post(
+            "http://localhost/test/dogs/-/reconcile",
+            data={"queries": json.dumps({"q0": {"query": "abcdef"}})},
+        )
+        assert 200 == response.status_code
+        data = response.json()
+        assert "q0" in data.keys()
+        assert len(data["q0"]["result"]) == 0
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+@pytest.mark.asyncio
+async def test_response_queries_no_results_get(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        queries = json.dumps({"q0": {"query": "abcdef"}})
+        response = await client.get(
+            "http://localhost/test/dogs/-/reconcile?queries={}".format(queries)
+        )
+        assert 200 == response.status_code
+        data = response.json()
+        assert "q0" in data.keys()
+        assert len(data["q0"]["result"]) == 0
+        assert response.headers["Access-Control-Allow-Origin"] == "*"

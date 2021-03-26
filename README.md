@@ -194,6 +194,11 @@ Now install the dependencies and tests:
 
     pip install -e '.[test]'
 
+You'll need to fetch the git submodules for the tests too:
+
+    git submodule init
+    git submodule update
+
 To run the tests:
 
     pytest
