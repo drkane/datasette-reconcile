@@ -38,7 +38,7 @@ async def reconcile(request, datasette):
     if queries:
         queries = json.loads(queries)
         return Response.json(
-            {q[0]: q[1] async for q in reconcile_queries(queries, config, db, table)},
+            {q[0]: {"result": q[1]} async for q in reconcile_queries(queries, config, db, table)},
             headers={
                 "Access-Control-Allow-Origin": "*",
             },
