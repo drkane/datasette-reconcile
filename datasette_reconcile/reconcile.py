@@ -71,7 +71,7 @@ def get_query_result(row, config, query):
     if config.get("type_field") and config["type_field"] in row:
         type_ = row[config["type_field"]]
     return {
-        "id": row[config["id_field"]],
+        "id": str(row[config["id_field"]]),
         "name": name,
         "type": {"id": type_},
         "score": fuzz.ratio(name_match, query_match),
@@ -92,5 +92,5 @@ def service_manifest(config, database, table, datasette):
         "identifierSpace": config.get("identifierSpace", DEFAULT_IDENTIFER_SPACE),
         "schemaSpace": config.get("schemaSpace", DEFAULT_SCHEMA_SPACE),
         "defaultTypes": config.get("type_default", [DEFAULT_TYPE]),
-        "view": get_view_url(datasette, database, table),
+        "view": {"url": get_view_url(datasette, database, table)},
     }
