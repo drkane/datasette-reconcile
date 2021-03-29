@@ -71,7 +71,7 @@ def get_query_result(row, config, query):
     if config.get("type_field") and config["type_field"] in row:
         type_ = row[config["type_field"]]
     return {
-        "id": row[config["id_field"]],
+        "id": str(row[config["id_field"]]),
         "name": name,
         "type": {"id": type_},
         "score": fuzz.ratio(name_match, query_match),
