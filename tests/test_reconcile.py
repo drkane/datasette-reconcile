@@ -49,7 +49,7 @@ async def test_response_queries_post(db_path):
         assert "q0" in data.keys()
         assert len(data["q0"]) == 1
         result = data["q0"][0]
-        assert result["id"] == 3
+        assert result["id"] == '3'
         assert result["name"] == "Fido"
         assert result["score"] == 100
         assert response.headers["Access-Control-Allow-Origin"] == "*"
@@ -68,7 +68,7 @@ async def test_response_queries_get(db_path):
         assert "q0" in data.keys()
         assert len(data["q0"]) == 1
         result = data["q0"][0]
-        assert result["id"] == 3
+        assert result["id"] == '3'
         assert result["name"] == "Fido"
         assert result["score"] == 100
         assert response.headers["Access-Control-Allow-Origin"] == "*"
