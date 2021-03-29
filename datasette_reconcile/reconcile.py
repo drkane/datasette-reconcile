@@ -92,5 +92,5 @@ def service_manifest(config, database, table, datasette):
         "identifierSpace": config.get("identifierSpace", DEFAULT_IDENTIFER_SPACE),
         "schemaSpace": config.get("schemaSpace", DEFAULT_SCHEMA_SPACE),
         "defaultTypes": config.get("type_default", [DEFAULT_TYPE]),
-        "view": get_view_url(datasette, database, table),
+        "view": {"url": get_view_url(datasette, database, table)},
     }
