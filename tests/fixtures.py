@@ -1,6 +1,14 @@
+import json
+import os
+
 import pytest
 import sqlite_utils
 from datasette.app import Datasette
+
+SCHEMA_DIR = os.path.join(
+    os.path.dirname(__file__),
+    "../specs",
+)
 
 
 def create_db(tmp_path_factory):
@@ -26,6 +34,18 @@ def plugin_metadata(metadata=None):
             "datasette-reconcile": metadata
         }
     return to_return
+
+
+def get_schema(filename):
+    schemas = {}
+    for f in os.scandir(SCHEMA_DIR):
+        if not f.is_dir():
+            continue
+        schema_path = os.path.join(f.path, "schemas", filename)
+        if os.path.exists(schema_path):
+            with open(schema_path, encoding="utf8") as schema_file:
+                schemas[f.name] = json.load(schema_file)
+    return schemas
 
 
 @pytest.fixture(scope="session")

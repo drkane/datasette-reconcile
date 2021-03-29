@@ -64,22 +64,24 @@ async def reconcile_queries(queries, config, db, table):
 
 
 def get_query_result(row, config, query):
-    name = row[config["name_field"]]
+    name = str(row[config["name_field"]])
     name_match = str(name).lower().strip()
     query_match = str(query["query"]).lower().strip()
-    type_ = config.get("type_default", DEFAULT_TYPE)
+    type_ = config.get("type_default", [DEFAULT_TYPE])
     if config.get("type_field") and config["type_field"] in row:
-        type_ = row[config["type_field"]]
+        type_ = [row[config["type_field"]]]
+
     return {
         "id": str(row[config["id_field"]]),
         "name": name,
-        "type": {"id": type_},
+        "type": type_,
         "score": fuzz.ratio(name_match, query_match),
         "match": name_match == query_match,
     }
 
 
 def service_manifest(config, database, table, datasette):
+    # @todo: if type_field is set then get a list of types to use in the "defaultTypes" item below.
     return {
         "versions": ["0.1", "0.2"],
         "name": config.get(
@@ -92,5 +94,7 @@ def service_manifest(config, database, table, datasette):
         "identifierSpace": config.get("identifierSpace", DEFAULT_IDENTIFER_SPACE),
         "schemaSpace": config.get("schemaSpace", DEFAULT_SCHEMA_SPACE),
         "defaultTypes": config.get("type_default", [DEFAULT_TYPE]),
-        "view": {"url": get_view_url(datasette, database, table)},
+        "view": {
+            "url": get_view_url(datasette, database, table),
+        },
     }
