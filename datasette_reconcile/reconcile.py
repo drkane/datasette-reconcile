@@ -80,7 +80,7 @@ def get_query_result(row, config, query):
     }
 
 
-def service_manifest(config, database, table, datasette):
+def service_manifest(config, database, table, datasette, request):
     # @todo: if type_field is set then get a list of types to use in the "defaultTypes" item below.
     return {
         "versions": ["0.1", "0.2"],
@@ -95,6 +95,8 @@ def service_manifest(config, database, table, datasette):
         "schemaSpace": config.get("schemaSpace", DEFAULT_SCHEMA_SPACE),
         "defaultTypes": config.get("type_default", [DEFAULT_TYPE]),
         "view": {
-            "url": get_view_url(datasette, database, table),
+            "url": datasette.absolute_url(
+                request, get_view_url(datasette, database, table)
+            )
         },
     }

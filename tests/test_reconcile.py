@@ -37,6 +37,7 @@ async def test_response_without_query(db_path):
         assert len(data["defaultTypes"]) == 1
         assert data["defaultTypes"][0]["id"] == "object"
         assert data["defaultTypes"][0]["name"] == "Object"
+        assert data["view"]["url"].startswith("http")
         assert response.headers["Access-Control-Allow-Origin"] == "*"
 
 
