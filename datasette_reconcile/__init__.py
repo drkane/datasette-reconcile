@@ -49,7 +49,7 @@ async def reconcile(request, datasette):
 
     # if we're not then just return the service specification
     return Response.json(
-        service_manifest(config, database, table, datasette),
+        service_manifest(config, database, table, datasette, request),
         headers={
             "Access-Control-Allow-Origin": "*",
         },
