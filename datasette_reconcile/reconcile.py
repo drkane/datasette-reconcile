@@ -6,9 +6,8 @@ from datasette_reconcile.settings import (
     DEFAULT_LIMIT,
     DEFAULT_SCHEMA_SPACE,
     DEFAULT_TYPE,
-    DEFAULT_VIEW_DOMAIN,
 )
-from datasette_reconcile.utils import get_select_fields, get_view_url
+from datasette_reconcile.utils import ReconcileError, get_select_fields, get_view_url
 
 
 async def reconcile_queries(queries, config, db, table):
@@ -83,21 +82,22 @@ def get_query_result(row, config, query):
 
 def service_manifest(config, database, table, datasette, request):
     # @todo: if type_field is set then get a list of types to use in the "defaultTypes" item below.
-    viewDomain = config.get("viewDomain", DEFAULT_VIEW_DOMAIN)
-    if viewDomain == "":
-        viewDomain = datasette.absolute_url(
+    view_url = config.get("view_url")
+    if not view_url:
+        view_url = datasette.absolute_url(
             request, get_view_url(datasette, database, table)
         )
-    else:
-        viewDomain += "{{id}}"
     return {
         "versions": ["0.1", "0.2"],
         "name": config.get(
             "service_name",
-            "{database} {table} reconciliation".format(database=database, table=table,),
+            "{database} {table} reconciliation".format(
+                database=database,
+                table=table,
+            ),
         ),
         "identifierSpace": config.get("identifierSpace", DEFAULT_IDENTIFER_SPACE),
         "schemaSpace": config.get("schemaSpace", DEFAULT_SCHEMA_SPACE),
         "defaultTypes": config.get("type_default", [DEFAULT_TYPE]),
-        "view": {"url": viewDomain},
+        "view": {"url": view_url},
     }

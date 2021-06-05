@@ -41,7 +41,8 @@ Add a `datasette-reconcile` object under `plugins` in `metadata.json`. This shou
                               "name": "Tree",
                             }],
                             "max_limit": 5,
-                            "service_name": "Tree reconciliation"
+                            "service_name": "Tree reconciliation",
+                            "view_url": "https://example.com/trees/{{id}}"
                         }
                     }
                 }
@@ -62,6 +63,7 @@ The rest of the configuration items are optional, and are as follows:
 - `service_name`: The name of the reconciliation service that will appear in the service manifest. If not provided it will take the form `<database name> <table name> reconciliation`.
 - `identifierSpace`: [Identifier space](https://reconciliation-api.github.io/specs/latest/#identifier-and-schema-spaces) given in the service manifest. If not provided a default of `http://rdf.freebase.com/ns/type.object.id` is used.
 - `schemaSpace`: [Schema space](https://reconciliation-api.github.io/specs/latest/#identifier-and-schema-spaces) given in the service manifest. If not provided a default of `http://rdf.freebase.com/ns/type.object.id` is used.
+- `view_url`: [URL for a view of an individual entity](https://reconciliation-api.github.io/specs/latest/#dfn-view-template). It must contain the string `{{id}}` which will be replaced with the ID of the entity. If not provided it will use the default datasette view for the entity record (something like `/<db_name>/<table>/{{id}}`).
 
 ### Using the endpoint
 

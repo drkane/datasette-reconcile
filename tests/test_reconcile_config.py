@@ -150,3 +150,31 @@ async def test_plugin_configuration_use_fts_table(ds):
         "dogs",
     )
     assert config["fts_table"] is None
+
+
+@pytest.mark.asyncio
+async def test_view_url_set(ds):
+    config = await check_config(
+        {
+            "name_field": "name",
+            "id_field": "id",
+            "view_url": "https://example.com/{{id}}",
+        },
+        ds.get_database("test"),
+        "dogs",
+    )
+    assert config["view_url"] == "https://example.com/{{id}}"
+
+
+@pytest.mark.asyncio
+async def test_view_url_no_id(ds):
+    with pytest.raises(ReconcileError, match="View URL must contain {{id}}"):
+        config = await check_config(
+            {
+                "name_field": "name",
+                "id_field": "id",
+                "view_url": "https://example.com/",
+            },
+            ds.get_database("test"),
+            "dogs",
+        )
