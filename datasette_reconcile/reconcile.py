@@ -29,10 +29,10 @@ async def reconcile_queries(queries, config, db, table):
             # characters in and sqlite3 version < 3.30.0
             # see: https://www.sqlite.org/src/info/00e9a8f2730eb723
             from_clause = """
-            {table} 
+            {table}
             inner join (
                     SELECT "rowid", "rank"
-                    FROM {fts_table} 
+                    FROM {fts_table}
                     WHERE {fts_table} MATCH :search_query
             ) as "a" on {table}."rowid" = a."rowid"
             """.format(
