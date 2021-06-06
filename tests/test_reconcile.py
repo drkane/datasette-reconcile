@@ -42,6 +42,35 @@ async def test_response_without_query(db_path):
 
 
 @pytest.mark.asyncio
+async def test_servce_manifest_view_url_default(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.get("http://localhost/test/dogs/-/reconcile")
+        assert 200 == response.status_code
+        data = response.json()
+        assert data["view"]["url"] == "http://localhost/test/dogs/{{id}}"
+
+
+@pytest.mark.asyncio
+async def test_servce_manifest_view_url_custom(db_path):
+    custom_view_url = "https://example.com/{{id}}"
+    app = Datasette(
+        [db_path],
+        metadata=plugin_metadata(
+            {
+                "name_field": "name",
+                "view_url": custom_view_url,
+            }
+        ),
+    ).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.get("http://localhost/test/dogs/-/reconcile")
+        assert 200 == response.status_code
+        data = response.json()
+        assert data["view"]["url"] == custom_view_url
+
+
+@pytest.mark.asyncio
 async def test_response_queries_post(db_path):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
     async with httpx.AsyncClient(app=app) as client:

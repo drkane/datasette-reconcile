@@ -7,7 +7,7 @@ from datasette_reconcile.settings import (
     DEFAULT_SCHEMA_SPACE,
     DEFAULT_TYPE,
 )
-from datasette_reconcile.utils import get_select_fields, get_view_url
+from datasette_reconcile.utils import ReconcileError, get_select_fields, get_view_url
 
 
 async def reconcile_queries(queries, config, db, table):
@@ -28,10 +28,10 @@ async def reconcile_queries(queries, config, db, table):
             # characters in and sqlite3 version < 3.30.0
             # see: https://www.sqlite.org/src/info/00e9a8f2730eb723
             from_clause = """
-            {table} 
+            {table}
             inner join (
                     SELECT "rowid", "rank"
-                    FROM {fts_table} 
+                    FROM {fts_table}
                     WHERE {fts_table} MATCH :search_query
             ) as "a" on {table}."rowid" = a."rowid"
             """.format(
@@ -82,6 +82,11 @@ def get_query_result(row, config, query):
 
 def service_manifest(config, database, table, datasette, request):
     # @todo: if type_field is set then get a list of types to use in the "defaultTypes" item below.
+    view_url = config.get("view_url")
+    if not view_url:
+        view_url = datasette.absolute_url(
+            request, get_view_url(datasette, database, table)
+        )
     return {
         "versions": ["0.1", "0.2"],
         "name": config.get(
@@ -94,9 +99,5 @@ def service_manifest(config, database, table, datasette, request):
         "identifierSpace": config.get("identifierSpace", DEFAULT_IDENTIFER_SPACE),
         "schemaSpace": config.get("schemaSpace", DEFAULT_SCHEMA_SPACE),
         "defaultTypes": config.get("type_default", [DEFAULT_TYPE]),
-        "view": {
-            "url": datasette.absolute_url(
-                request, get_view_url(datasette, database, table)
-            )
-        },
+        "view": {"url": view_url},
     }
