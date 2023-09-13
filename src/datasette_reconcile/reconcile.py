@@ -23,32 +23,33 @@ class ReconcileAPI:
         self.table = table
         self.datasette = datasette
 
-    def _get_headers(self):
-        return {
-            "Access-Control-Allow-Origin": "*",
-        }
-
     async def get(self, request):
+        """
+        Takes a request and returns a response based on the queries.
+        """
+
         # work out if we are looking for queries
-        queries = await self.get_queries(request)
+        queries = await self._get_queries(request)
         if queries:
-            return Response.json(
-                {q[0]: {"result": q[1]} async for q in self.reconcile_queries(queries)},
-                headers=self._get_headers(),
-            )
+            return self._response({q[0]: {"result": q[1]} async for q in self._reconcile_queries(queries)})
         # if we're not then just return the service specification
+        return self._response(self._service_manifest(request))
+
+    def _response(self, response):
         return Response.json(
-            self.service_manifest(request),
-            headers=self._get_headers(),
+            response,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+            },
         )
 
-    async def get_queries(self, request):
+    async def _get_queries(self, request):
         post_vars = await request.post_vars()
         queries = post_vars.get("queries", request.args.get("queries"))
         if queries:
             return json.loads(queries)
 
-    async def reconcile_queries(self, queries):
+    async def _reconcile_queries(self, queries):
         select_fields = get_select_fields(self.config)
         for query_id, query in queries.items():
             limit = min(
@@ -96,11 +97,11 @@ class ReconcileAPI:
                 order_by=order_by,
                 limit=limit,
             )
-            query_results = [self.get_query_result(r, query) for r in await self.db.execute(query_sql, params)]
+            query_results = [self._get_query_result(r, query) for r in await self.db.execute(query_sql, params)]
             query_results = sorted(query_results, key=lambda x: -x["score"])
             yield query_id, query_results
 
-    def get_query_result(self, row, query):
+    def _get_query_result(self, row, query):
         name = str(row[self.config["name_field"]])
         name_match = str(name).lower().strip()
         query_match = str(query["query"]).lower().strip()
@@ -116,7 +117,7 @@ class ReconcileAPI:
             "match": name_match == query_match,
         }
 
-    def service_manifest(self, request):
+    def _service_manifest(self, request):
         # @todo: if type_field is set then get a list of types to use in the "defaultTypes" item below.
         view_url = self.config.get("view_url")
         if not view_url:

@@ -202,9 +202,9 @@ Run tests then run a server showing where coverage is missing
 
     hatch run cov-html
 
-    Black and ruff should be run before committing any changes.
-
 ### Linting/formatting
+
+Black and ruff should be run before committing any changes.
 
 To check for any changes needed:
 
