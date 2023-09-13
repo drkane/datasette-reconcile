@@ -183,19 +183,7 @@ limit 5
 
 ## Development
 
-To set up this plugin locally, first checkout the code. Then create a new virtual environment:
-
-    cd datasette-reconcile
-    python3 -mvenv venv
-    source venv/bin/activate
-
-Or if you are using `pipenv`:
-
-    pipenv shell
-
-Now install the dependencies and tests:
-
-    pip install -e '.[test]'
+This plugin uses hatch for build and testing. To set up this plugin locally, first checkout the code.
 
 You'll need to fetch the git submodules for the tests too:
 
@@ -204,4 +192,31 @@ You'll need to fetch the git submodules for the tests too:
 
 To run the tests:
 
-    pytest
+    hatch run test
+
+Run tests then report on coverage
+
+    hatch run cov
+
+Run tests then run a server showing where coverage is missing
+
+    hatch run cov-html
+
+    Black and ruff should be run before committing any changes.
+
+### Linting/formatting
+
+To check for any changes needed:
+
+    hatch run lint:style
+
+To run any autoformatting possible:
+
+    hatch run lint:fmt
+
+### Publish to pypi
+
+    hatch build
+    hatch publish
+    git tag v<VERSION_NUMBER>
+    git push origin v<VERSION_NUMBER>
