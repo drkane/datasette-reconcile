@@ -7,12 +7,11 @@ from datasette_reconcile.settings import (
     DEFAULT_SCHEMA_SPACE,
     DEFAULT_TYPE,
 )
-from datasette_reconcile.utils import ReconcileError, get_select_fields, get_view_url
+from datasette_reconcile.utils import get_select_fields, get_view_url
 
 
 async def reconcile_queries(queries, config, db, table):
     select_fields = get_select_fields(config)
-    queries_results = {}
     for query_id, query in queries.items():
         limit = min(
             query.get("limit", config.get("max_limit", DEFAULT_LIMIT)),
@@ -34,7 +33,7 @@ async def reconcile_queries(queries, config, db, table):
                     FROM {fts_table}
                     WHERE {fts_table} MATCH :search_query
             ) as "a" on {table}."rowid" = a."rowid"
-            """.format(
+            """.format(  # noqa: S608
                 table=escape_sqlite(table),
                 fts_table=escape_sqlite(config["fts_table"]),
             )
@@ -48,17 +47,18 @@ async def reconcile_queries(queries, config, db, table):
             )
             params["search_query"] = f"%{query['query']}%"
 
-        query_sql = "select {select_fields} from {from_clause} where {where_clause} {order_by} limit {limit}".format(
+        query_sql = """
+            SELECT {select_fields}
+            FROM {from_clause}
+            WHERE {where_clause} {order_by}
+            LIMIT {limit}""".format(  # noqa: S608
             select_fields=",".join([escape_sqlite(f) for f in select_fields]),
             from_clause=from_clause,
             where_clause=" and ".join(where_clauses),
             order_by=order_by,
             limit=limit,
         )
-        query_results = [
-            get_query_result(r, config, query)
-            for r in await db.execute(query_sql, params)
-        ]
+        query_results = [get_query_result(r, config, query) for r in await db.execute(query_sql, params)]
         query_results = sorted(query_results, key=lambda x: -x["score"])
         yield query_id, query_results
 
@@ -84,17 +84,12 @@ def service_manifest(config, database, table, datasette, request):
     # @todo: if type_field is set then get a list of types to use in the "defaultTypes" item below.
     view_url = config.get("view_url")
     if not view_url:
-        view_url = datasette.absolute_url(
-            request, get_view_url(datasette, database, table)
-        )
+        view_url = datasette.absolute_url(request, get_view_url(datasette, database, table))
     return {
         "versions": ["0.1", "0.2"],
         "name": config.get(
             "service_name",
-            "{database} {table} reconciliation".format(
-                database=database,
-                table=table,
-            ),
+            f"{database} {table} reconciliation",
         ),
         "identifierSpace": config.get("identifierSpace", DEFAULT_IDENTIFER_SPACE),
         "schemaSpace": config.get("schemaSpace", DEFAULT_SCHEMA_SPACE),

@@ -1,8 +1,0 @@
--r requirements.txt
-pytest
-black
-isort
-sqlite_utils
-pytest-asyncio
-jsonschema
--e file:.

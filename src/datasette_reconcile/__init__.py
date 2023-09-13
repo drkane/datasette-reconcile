@@ -1,7 +1,4 @@
-import html
 import json
-import sqlite3
-import warnings
 
 from datasette import hookimpl
 from datasette.utils.asgi import Response
@@ -16,9 +13,7 @@ async def reconcile(request, datasette):
     db = datasette.get_database(database)
 
     # get plugin configuration
-    config = datasette.plugin_config(
-        "datasette-reconcile", database=database, table=table
-    )
+    config = datasette.plugin_config("datasette-reconcile", database=database, table=table)
     config = await check_config(config, db, table)
 
     # check user can at least view this table
@@ -38,10 +33,7 @@ async def reconcile(request, datasette):
     if queries:
         queries = json.loads(queries)
         return Response.json(
-            {
-                q[0]: {"result": q[1]}
-                async for q in reconcile_queries(queries, config, db, table)
-            },
+            {q[0]: {"result": q[1]} async for q in reconcile_queries(queries, config, db, table)},
             headers={
                 "Access-Control-Allow-Origin": "*",
             },

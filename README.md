@@ -1,6 +1,7 @@
 # datasette-reconcile
 
-[![PyPI](https://img.shields.io/pypi/v/datasette-reconcile.svg)](https://pypi.org/project/datasette-reconcile/)
+[![PyPI - Version](https://img.shields.io/pypi/v/datasette-reconcile.svg)](https://pypi.org/project/datasette-reconcile)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/datasette-reconcile.svg)](https://pypi.org/project/datasette-reconcile)
 [![Changelog](https://img.shields.io/github/v/release/drkane/datasette-reconcile?include_prereleases&label=changelog)](https://github.com/drkane/datasette-reconcile/releases)
 [![Tests](https://github.com/drkane/datasette-reconcile/workflows/Test/badge.svg)](https://github.com/drkane/datasette-reconcile/actions?query=workflow%3ATest)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/drkane/datasette-reconcile/blob/main/LICENSE)

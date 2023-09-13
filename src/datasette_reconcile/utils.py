@@ -1,9 +1,12 @@
 import sqlite3
 import warnings
 
-from datasette.utils.asgi import Forbidden, NotFound, Response
+from datasette.utils import HASH_LENGTH
+from datasette.utils.asgi import Forbidden, NotFound
 
-from datasette_reconcile.settings import DEFAULT_TYPE
+from datasette_reconcile.settings import DEFAULT_TYPE, SQLITE_VERSION_WARNING
+
+PERMISSION_TUPLE_SIZE = 2
 
 
 class ReconcileError(Exception):
@@ -17,14 +20,11 @@ async def check_permissions(request, permissions, ds):
         if isinstance(permission, str):
             action = permission
             resource = None
-        elif isinstance(permission, (tuple, list)) and len(permission) == 2:
+        elif isinstance(permission, (tuple, list)) and len(permission) == PERMISSION_TUPLE_SIZE:
             action, resource = permission
         else:
-            assert (
-                False
-            ), "permission should be string or tuple of two items: {}".format(
-                repr(permission)
-            )
+            msg = f"permission should be string or tuple of two items: {permission!r}"
+            raise AssertionError(msg)
         ok = await ds.permission_allowed(
             request.actor,
             action,
@@ -42,14 +42,12 @@ async def check_config(config, db, table):
     is_view = bool(await db.get_view_definition(table))
     table_exists = bool(await db.table_exists(table))
     if not is_view and not table_exists:
-        raise NotFound("Table not found: {}".format(table))
+        msg = f"Table not found: {table}"
+        raise NotFound(msg)
 
     if not config:
-        raise NotFound(
-            "datasette-reconcile not configured for table {} in database {}".format(
-                table, str(db)
-            )
-        )
+        msg = f"datasette-reconcile not configured for table {table} in database {db!s}"
+        raise NotFound(msg)
 
     pks = await db.primary_keys(table)
     if not pks:
@@ -58,31 +56,36 @@ async def check_config(config, db, table):
     if "id_field" not in config and len(pks) == 1:
         config["id_field"] = pks[0]
     elif "id_field" not in config:
-        raise ReconcileError("Could not determine an ID field to use")
-
+        msg = "Could not determine an ID field to use"
+        raise ReconcileError(msg)
     if "name_field" not in config:
-        raise ReconcileError("Name field must be defined to activate reconciliation")
-
+        msg = "Name field must be defined to activate reconciliation"
+        raise ReconcileError(msg)
     if "type_field" not in config and "type_default" not in config:
         config["type_default"] = [DEFAULT_TYPE]
 
     if "max_limit" in config and not isinstance(config["max_limit"], int):
-        raise TypeError("max_limit in reconciliation config must be an integer")
-
+        msg = "max_limit in reconciliation config must be an integer"
+        raise TypeError(msg)
     if "type_default" in config:
         if not isinstance(config["type_default"], list):
-            raise ReconcileError("type_default should be a list of objects")
+            msg = "type_default should be a list of objects"
+            raise ReconcileError(msg)
         for t in config["type_default"]:
             if not isinstance(t, dict):
-                raise ReconcileError("type_default values should be objects")
+                msg = "type_default values should be objects"
+                raise ReconcileError(msg)
             if not isinstance(t.get("id"), str):
-                raise ReconcileError("type_default 'id' values should be strings")
+                msg = "type_default 'id' values should be strings"
+                raise ReconcileError(msg)
             if not isinstance(t.get("name"), str):
-                raise ReconcileError("type_default 'name' values should be strings")
+                msg = "type_default 'name' values should be strings"
+                raise ReconcileError(msg)
 
     if "view_url" in config:
-        if not "{{id}}" in config["view_url"]:
-            raise ReconcileError("View URL must contain {{id}}")
+        if "{{id}}" not in config["view_url"]:
+            msg = "View URL must contain {{id}}"
+            raise ReconcileError(msg)
 
     config["fts_table"] = await db.fts_table(table)
 
@@ -90,20 +93,22 @@ async def check_config(config, db, table):
     # full text search results will fail for < 3.30.0 if the table
     # name contains special characters
     if config["fts_table"] and (
-        (sqlite3.sqlite_version_info[0] == 3 and sqlite3.sqlite_version_info[1] < 30)
-        or sqlite3.sqlite_version_info[0] < 3
+        (
+            sqlite3.sqlite_version_info[0] == SQLITE_VERSION_WARNING[0]
+            and sqlite3.sqlite_version_info[1] < SQLITE_VERSION_WARNING[1]
+        )
+        or sqlite3.sqlite_version_info[0] < SQLITE_VERSION_WARNING[0]
     ):
         warnings.warn(
-            "Full Text Search queries for sqlite3 version < 3.30.0 wil fail if table name contains special characters"
+            "Full Text Search queries for sqlite3 version < 3.30.0 wil fail if table name contains special characters",
+            stacklevel=2,
         )
 
     return config
 
 
 def get_select_fields(config):
-    select_fields = [config["id_field"], config["name_field"]] + config.get(
-        "additional_fields", []
-    )
+    select_fields = [config["id_field"], config["name_field"], *config.get("additional_fields", [])]
     if config.get("type_field"):
         select_fields.append(config["type_field"])
     return select_fields
@@ -116,8 +121,6 @@ def get_view_url(ds, database, table):
     db = ds.databases[database]
     base_url = ds.config("base_url")
     if ds.config("hash_urls") and db.hash:
-        return "{}{}-{}/{}/{}".format(
-            base_url, database, db.hash[:HASH_LENGTH], table, id_str
-        )
+        return f"{base_url}{database}-{db.hash[:HASH_LENGTH]}/{table}/{id_str}"
     else:
-        return "{}{}/{}/{}".format(base_url, database, table, id_str)
+        return f"{base_url}{database}/{table}/{id_str}"
