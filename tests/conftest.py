@@ -5,6 +5,8 @@ import pytest
 import sqlite_utils
 from datasette.app import Datasette
 
+from datasette_reconcile.settings import SUPPORTED_API_VERSIONS
+
 SCHEMA_DIR = os.path.join(
     os.path.dirname(__file__),
     "../specs",
@@ -38,6 +40,8 @@ def get_schema(filename):
     schemas = {}
     for f in os.scandir(SCHEMA_DIR):
         if not f.is_dir():
+            continue
+        if f.name not in SUPPORTED_API_VERSIONS:
             continue
         schema_path = os.path.join(f.path, "schemas", filename)
         if os.path.exists(schema_path):
