@@ -5,3 +5,4 @@ DEFAULT_TYPE = {
 }
 DEFAULT_IDENTIFER_SPACE = "http://rdf.freebase.com/ns/type.object.id"
 DEFAULT_SCHEMA_SPACE = "http://rdf.freebase.com/ns/type.object.id"
+SQLITE_VERSION_WARNING = (3, 30, 0)

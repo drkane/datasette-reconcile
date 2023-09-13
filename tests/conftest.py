@@ -30,9 +30,7 @@ def create_db(tmp_path_factory):
 def plugin_metadata(metadata=None):
     to_return = {"databases": {"test": {"tables": {"dogs": {"title": "Some dogs"}}}}}
     if isinstance(metadata, dict):
-        to_return["databases"]["test"]["tables"]["dogs"]["plugins"] = {
-            "datasette-reconcile": metadata
-        }
+        to_return["databases"]["test"]["tables"]["dogs"]["plugins"] = {"datasette-reconcile": metadata}
     return to_return
 
 
