@@ -161,7 +161,7 @@ async def test_view_url_set(ds):
 @pytest.mark.asyncio
 async def test_view_url_no_id(ds):
     with pytest.raises(ReconcileError, match="View URL must contain {{id}}"):
-        config = await check_config(
+        _ = await check_config(
             {
                 "name_field": "name",
                 "id_field": "id",

@@ -40,8 +40,8 @@ jobs:
         cache: pip
     - name: Install dependencies
       run: |
-        pip install -e .
+        pip install -e .[lint]
         pip install hatch
-    - name: Run tests
+    - name: Run lint
       run: |
         hatch run lint:style
