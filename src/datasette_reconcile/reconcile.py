@@ -9,6 +9,7 @@ from datasette_reconcile.settings import (
     DEFAULT_LIMIT,
     DEFAULT_SCHEMA_SPACE,
     DEFAULT_TYPE,
+    DEFAULT_PROPERTY_SETTINGS,
 )
 from datasette_reconcile.utils import get_select_fields, get_view_url
 
@@ -22,18 +23,37 @@ class ReconcileAPI:
         self.db = datasette.get_database(database)
         self.table = table
         self.datasette = datasette
-
-    async def get(self, request):
+    
+    async def reconcile(self, request):
         """
         Takes a request and returns a response based on the queries.
         """
-
         # work out if we are looking for queries
-        queries = await self._get_queries(request)
+        post_vars = await request.post_vars()
+        queries = post_vars.get("queries", request.args.get("queries"))
+        extend = post_vars.get("extend", request.args.get("extend"))
+
         if queries:
-            return self._response({q[0]: {"result": q[1]} async for q in self._reconcile_queries(queries)})
+            return self._response({q[0]: {"result": q[1]} async for q in self._reconcile_queries(json.loads(queries))})
+        elif extend:
+            response = await self._extend(json.loads(extend))
+            return self._response(response)
+        else:
         # if we're not then just return the service specification
-        return self._response(self._service_manifest(request))
+            return self._response(self._service_manifest(request))
+
+
+    async def properties(self, request):
+        limit = request.args.get('limit', DEFAULT_LIMIT)
+        type = request.args.get('type', None)
+
+        properties = self.config.get("properties", DEFAULT_PROPERTY_SETTINGS)
+
+        return self._response({
+            "limit": limit,
+            "type": type,
+            "properties": [{"id": p.get('name'), "name": p.get('label')} for p in properties]
+        })
 
     def _response(self, response):
         return Response.json(
@@ -42,12 +62,46 @@ class ReconcileAPI:
                 "Access-Control-Allow-Origin": "*",
             },
         )
+        
+    async def _extend(self, data):
+        ids = data['ids']
+        data_properties = data['properties']
+        properties = self.config.get("properties", DEFAULT_PROPERTY_SETTINGS)
+        PROPERTIES = {p['name']: p for p in properties}
+        id_field = self.config.get("id_field", "id")
 
-    async def _get_queries(self, request):
-        post_vars = await request.post_vars()
-        queries = post_vars.get("queries", request.args.get("queries"))
-        if queries:
-            return json.loads(queries)
+        select_fields = [id_field] + [p['id'] for p in data_properties]
+
+        query_sql = """
+            select {fields}
+            from {table}
+            where {where_clause}
+        """.format(
+            table=escape_sqlite(self.table),
+            where_clause=f'{escape_sqlite(id_field)} in ({",".join(ids)})',
+            fields=','.join([escape_sqlite(f) for f in select_fields])
+        )
+        params = {}
+        query_results = await self.db.execute(query_sql, params)
+
+        rows = {}
+        for row in query_results:
+            values = {}
+            for p in data_properties:
+                values[p['id']] = [
+                    {
+                        "str": row[p['id']]
+                    }
+                ]
+
+            rows[row[id_field]] = values
+
+        response = {
+            'meta': [{"id": p['id'], 'name': PROPERTIES[p['id']]['label']} for p in data_properties],
+            'rows': rows
+        }
+
+        return response
 
     async def _reconcile_queries(self, queries):
         select_fields = get_select_fields(self.config)
@@ -122,7 +176,10 @@ class ReconcileAPI:
         view_url = self.config.get("view_url")
         if not view_url:
             view_url = self.datasette.absolute_url(request, get_view_url(self.datasette, self.database, self.table))
-        return {
+
+        properties = self.config.get("properties", DEFAULT_PROPERTY_SETTINGS)
+
+        manifest = {
             "versions": ["0.1", "0.2"],
             "name": self.config.get(
                 "service_name",
@@ -133,3 +190,14 @@ class ReconcileAPI:
             "defaultTypes": self.config.get("type_default", [DEFAULT_TYPE]),
             "view": {"url": view_url},
         }
+
+        if properties:
+            manifest["extend"] = {
+                "propose_properties": {
+                    "service_url": f'{request.scheme}://{request.host}{self.datasette.setting("base_url")}',
+                    "service_path": f'{self.database}/{self.table}/-/reconcile/properties'
+                },
+                "property_settings": self.config.get("properties", DEFAULT_PROPERTY_SETTINGS)
+            }
+
+        return manifest
