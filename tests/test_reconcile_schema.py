@@ -27,6 +27,27 @@ async def test_schema_manifest(schema_version, schema, db_path):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("schema_version, schema", get_schema("manifest.json").items())
+async def test_schema_manifest_extend(schema_version, schema, db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name", "properties": [
+        {
+            "name": "status",
+            "label": "Status",
+            "type": "text"
+        }
+    ]})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.get("http://localhost/test/dogs/-/reconcile")
+        data = response.json()
+        logging.info(f"Schema version: {schema_version}")
+        jsonschema.validate(
+            instance=data,
+            schema=schema,
+            cls=jsonschema.Draft7Validator,
+        )
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("schema_version, schema", get_schema("reconciliation-result-batch.json").items())
 async def test_response_queries_schema_post(schema_version, schema, db_path):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
