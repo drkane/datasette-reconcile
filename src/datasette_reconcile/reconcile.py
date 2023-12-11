@@ -173,9 +173,14 @@ class ReconcileAPI:
 
     def _service_manifest(self, request):
         # @todo: if type_field is set then get a list of types to use in the "defaultTypes" item below.
+        # handle X-FORWARDED-PROTO in Datasette: https://github.com/simonw/datasette/issues/2215
+        scheme = request.scheme
+        if 'x-forwarded-proto' in request.headers:
+            scheme = request.headers.get('x-forwarded-proto')
+        
         view_url = self.config.get("view_url")
         if not view_url:
-            view_url = self.datasette.absolute_url(request, get_view_url(self.datasette, self.database, self.table))
+            view_url = f"{scheme}://{request.host}{get_view_url(self.datasette, self.database, self.table)}"
 
         properties = self.config.get("properties", DEFAULT_PROPERTY_SETTINGS)
 
@@ -190,11 +195,11 @@ class ReconcileAPI:
             "defaultTypes": self.config.get("type_default", [DEFAULT_TYPE]),
             "view": {"url": view_url},
         }
-
+    
         if properties:
             manifest["extend"] = {
                 "propose_properties": {
-                    "service_url": f'{request.scheme}://{request.host}{self.datasette.setting("base_url")}',
+                    "service_url": f'{scheme}://{request.host}{self.datasette.setting("base_url")}',
                     "service_path": f'{self.database}/{self.table}/-/reconcile/properties'
                 },
                 "property_settings": self.config.get("properties", DEFAULT_PROPERTY_SETTINGS)
