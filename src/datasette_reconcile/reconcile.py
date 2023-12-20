@@ -9,7 +9,6 @@ from datasette_reconcile.settings import (
     DEFAULT_LIMIT,
     DEFAULT_SCHEMA_SPACE,
     DEFAULT_TYPE,
-    DEFAULT_PROPERTY_SETTINGS,
 )
 from datasette_reconcile.utils import get_select_fields, get_view_url
 
@@ -23,7 +22,7 @@ class ReconcileAPI:
         self.db = datasette.get_database(database)
         self.table = table
         self.datasette = datasette
-    
+
     async def reconcile(self, request):
         """
         Takes a request and returns a response based on the queries.
@@ -39,21 +38,64 @@ class ReconcileAPI:
             response = await self._extend(json.loads(extend))
             return self._response(response)
         else:
-        # if we're not then just return the service specification
-            return self._response(self._service_manifest(request))
-
+            # if we're not then just return the service specification
+            return self._response(await self._service_manifest(request))
 
     async def properties(self, request):
-        limit = request.args.get('limit', DEFAULT_LIMIT)
-        type = request.args.get('type', None)
+        limit = request.args.get("limit", DEFAULT_LIMIT)
+        type_ = request.args.get("type", DEFAULT_TYPE)
 
-        properties = self.config.get("properties", DEFAULT_PROPERTY_SETTINGS)
+        return self._response(
+            {
+                "limit": limit,
+                "type": type_,
+                "properties": [{"id": p["id"], "name": p["name"]} async for p in self._get_properties()],
+            }
+        )
 
-        return self._response({
-            "limit": limit,
-            "type": type,
-            "properties": [{"id": p.get('name'), "name": p.get('label')} for p in properties]
-        })
+    async def suggest_entity(self, request):
+        prefix = request.args.get("prefix")
+        cursor = int(request.args.get("cursor", 0))
+
+        name_field = self.config["name_field"]
+        id_field = self.config.get("id_field", "id")
+        query_sql = f"""
+            select {escape_sqlite(id_field)} as id, {escape_sqlite(name_field)} as name
+            from {escape_sqlite(self.table)}
+            where {escape_sqlite(name_field)} like :search_query
+            limit {DEFAULT_LIMIT} offset {cursor}
+        """  # noqa: S608
+        params = {"search_query": f"{prefix}%"}
+
+        return self._response(
+            {"result": [{"id": r["id"], "name": r["name"]} for r in await self.db.execute(query_sql, params)]}
+        )
+
+    async def suggest_property(self, request):
+        prefix = request.args.get("prefix")
+        cursor = request.args.get("cursor", 0)
+
+        properties = [
+            {"id": p["id"], "name": p["name"]}
+            async for p in self._get_properties()
+            if p["name"].startswith(prefix) or p["id"].startswith(prefix)
+        ][cursor : cursor + DEFAULT_LIMIT]
+
+        return self._response({"result": properties})
+
+    async def suggest_type(self, request):
+        prefix = request.args.get("prefix")  # noqa: F841
+
+        return self._response({"result": []})
+
+    async def _get_properties(self):
+        column_descriptions = self.datasette.table_metadata(self.database, self.table).get("columns") or {}
+        for column in await self.db.table_column_details(self.table):
+            yield {
+                "id": column.name,
+                "name": column_descriptions.get(column.name, column.name),
+                "type": column.type,
+            }
 
     def _response(self, response):
         return Response.json(
@@ -62,43 +104,43 @@ class ReconcileAPI:
                 "Access-Control-Allow-Origin": "*",
             },
         )
-        
+
     async def _extend(self, data):
-        ids = data['ids']
-        data_properties = data['properties']
-        properties = self.config.get("properties", DEFAULT_PROPERTY_SETTINGS)
-        PROPERTIES = {p['name']: p for p in properties}
+        ids = data["ids"]
+        data_properties = data["properties"]
+        properties = {p["name"]: p async for p in self._get_properties()}
         id_field = self.config.get("id_field", "id")
 
-        select_fields = [id_field] + [p['id'] for p in data_properties]
+        select_fields = [id_field] + [p["id"] for p in data_properties]
 
         query_sql = """
             select {fields}
             from {table}
             where {where_clause}
-        """.format(
+        """.format(  # noqa: S608
             table=escape_sqlite(self.table),
-            where_clause=f'{escape_sqlite(id_field)} in ({",".join(ids)})',
-            fields=','.join([escape_sqlite(f) for f in select_fields])
+            where_clause=f"{escape_sqlite(id_field)} in ({','.join(['?'] * len(ids))})",
+            fields=",".join([escape_sqlite(f) for f in select_fields]),
         )
-        params = {}
-        query_results = await self.db.execute(query_sql, params)
+        query_results = await self.db.execute(query_sql, ids)
 
         rows = {}
         for row in query_results:
             values = {}
             for p in data_properties:
-                values[p['id']] = [
-                    {
-                        "str": row[p['id']]
-                    }
-                ]
+                property_ = properties[p["id"]]
+                if property_["type"] == "INTEGER":
+                    values[p["id"]] = [{"int": row[p["id"]]}]
+                elif property_["type"] == "FLOAT":
+                    values[p["id"]] = [{"float": row[p["id"]]}]
+                else:
+                    values[p["id"]] = [{"str": row[p["id"]]}]
 
             rows[row[id_field]] = values
 
         response = {
-            'meta': [{"id": p['id'], 'name': PROPERTIES[p['id']]['label']} for p in data_properties],
-            'rows': rows
+            "meta": [{"id": p["id"], "name": properties[p["id"]]["name"]} for p in data_properties],
+            "rows": rows,
         }
 
         return response
@@ -171,18 +213,22 @@ class ReconcileAPI:
             "match": name_match == query_match,
         }
 
-    def _service_manifest(self, request):
+    async def _service_manifest(self, request):
         # @todo: if type_field is set then get a list of types to use in the "defaultTypes" item below.
         # handle X-FORWARDED-PROTO in Datasette: https://github.com/simonw/datasette/issues/2215
         scheme = request.scheme
-        if 'x-forwarded-proto' in request.headers:
-            scheme = request.headers.get('x-forwarded-proto')
-        
+        if "x-forwarded-proto" in request.headers:
+            scheme = request.headers.get("x-forwarded-proto")
+
+        service_url = (
+            f'{scheme}://{request.host}{self.datasette.setting("base_url")}/{self.database}/{self.table}/-/reconcile'
+        )
+
         view_url = self.config.get("view_url")
         if not view_url:
             view_url = f"{scheme}://{request.host}{get_view_url(self.datasette, self.database, self.table)}"
 
-        properties = self.config.get("properties", DEFAULT_PROPERTY_SETTINGS)
+        properties = self._get_properties()
 
         manifest = {
             "versions": ["0.1", "0.2"],
@@ -194,15 +240,46 @@ class ReconcileAPI:
             "schemaSpace": self.config.get("schemaSpace", DEFAULT_SCHEMA_SPACE),
             "defaultTypes": self.config.get("type_default", [DEFAULT_TYPE]),
             "view": {"url": view_url},
-        }
-    
-        if properties:
-            manifest["extend"] = {
+            "extend": {
                 "propose_properties": {
-                    "service_url": f'{scheme}://{request.host}{self.datasette.setting("base_url")}',
-                    "service_path": f'{self.database}/{self.table}/-/reconcile/properties'
+                    "service_url": service_url,
+                    "service_path": "/extend/propose",
                 },
-                "property_settings": self.config.get("properties", DEFAULT_PROPERTY_SETTINGS)
-            }
+                "property_settings": [
+                    {
+                        "name": p["id"],
+                        "label": p["name"],
+                        "type": "number" if p["type"] in ["INTEGER", "FLOAT"] else "text",
+                    }
+                    async for p in properties
+                ],
+            },
+            "suggest": {
+                "entity": (
+                    {
+                        "service_url": service_url,
+                        "service_path": "/suggest/entity",
+                    }
+                    if self.api_version in ["0.1", "0.2"]
+                    else True
+                ),
+                "type": (
+                    {
+                        "service_url": service_url,
+                        "service_path": "/suggest/type",
+                    }
+                    if self.api_version in ["0.1", "0.2"]
+                    else True
+                ),
+                "property": (
+                    {
+                        "service_url": service_url,
+                        "service_path": "/suggest/property",
+                    }
+                    if self.api_version in ["0.1", "0.2"]
+                    else True
+                ),
+            },
+        }
 
         return manifest

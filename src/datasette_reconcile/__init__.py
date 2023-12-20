@@ -38,9 +38,27 @@ async def properties(request, datasette):
     return await reconcile_api.properties(request)
 
 
+async def suggest_entity(request, datasette):
+    reconcile_api = await get_api(request, datasette)
+    return await reconcile_api.suggest_entity(request)
+
+
+async def suggest_property(request, datasette):
+    reconcile_api = await get_api(request, datasette)
+    return await reconcile_api.suggest_property(request)
+
+
+async def suggest_type(request, datasette):
+    reconcile_api = await get_api(request, datasette)
+    return await reconcile_api.suggest_type(request)
+
+
 @hookimpl
 def register_routes():
     return [
         (r"/(?P<db_name>[^/]+)/(?P<db_table>[^/]+?)/-/reconcile$", reconcile),
-        (r"/(?P<db_name>[^/]+)/(?P<db_table>[^/]+?)/-/reconcile/properties$", properties),
+        (r"/(?P<db_name>[^/]+)/(?P<db_table>[^/]+?)/-/reconcile/extend/propose$", properties),
+        (r"/(?P<db_name>[^/]+)/(?P<db_table>[^/]+?)/-/reconcile/suggest/entity$", suggest_entity),
+        (r"/(?P<db_name>[^/]+)/(?P<db_table>[^/]+?)/-/reconcile/suggest/property$", suggest_property),
+        (r"/(?P<db_name>[^/]+)/(?P<db_table>[^/]+?)/-/reconcile/suggest/type$", suggest_type),
     ]

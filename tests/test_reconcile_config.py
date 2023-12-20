@@ -37,6 +37,28 @@ async def test_plugin_configuration_use_pk(ds):
 
 
 @pytest.mark.asyncio
+async def test_plugin_configuration_max_limit(ds):
+    with pytest.raises(TypeError, match="max_limit in reconciliation config must be an integer"):
+        await check_config({"name_field": "name", "max_limit": "BLAH"}, ds.get_database("test"), "dogs")
+
+
+@pytest.mark.asyncio
+async def test_plugin_configuration_type_default(ds):
+    with pytest.raises(ReconcileError, match="type_default should be a list of objects"):
+        await check_config({"name_field": "name", "type_default": "BLAH"}, ds.get_database("test"), "dogs")
+    with pytest.raises(ReconcileError, match="type_default values should be objects"):
+        await check_config({"name_field": "name", "type_default": ["BLAH"]}, ds.get_database("test"), "dogs")
+    with pytest.raises(ReconcileError, match="type_default 'id' values should be strings"):
+        await check_config(
+            {"name_field": "name", "type_default": [{"id": 1, "name": "test"}]}, ds.get_database("test"), "dogs"
+        )
+    with pytest.raises(ReconcileError, match="type_default 'name' values should be strings"):
+        await check_config(
+            {"name_field": "name", "type_default": [{"name": 1, "id": "test"}]}, ds.get_database("test"), "dogs"
+        )
+
+
+@pytest.mark.asyncio
 async def test_plugin_configuration_use_id_field(ds):
     config = await check_config(
         {
