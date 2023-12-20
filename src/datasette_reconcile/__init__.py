@@ -2,6 +2,7 @@ from datasette import hookimpl
 
 from datasette_reconcile.reconcile import ReconcileAPI
 from datasette_reconcile.utils import check_config, check_permissions
+from datasette_reconcile.views import ReconcileHTML
 
 
 async def reconcile(request, datasette):
@@ -30,5 +31,8 @@ async def reconcile(request, datasette):
 
 
 @hookimpl
-def register_routes():
-    return [(r"/(?P<db_name>[^/]+)/(?P<db_table>[^/]+?)/-/reconcile$", reconcile)]
+def register_routes(datasette):
+    return [
+        (r"/(?P<db_name>[^/]+)/(?P<db_table>[^/]+?)/-/reconcile$", reconcile),
+        (r"/(?P<db_name>[^/]+)/(?P<db_table>[^/]+?)/-/reconcile.html$", ReconcileHTML.as_view(datasette)),
+    ]

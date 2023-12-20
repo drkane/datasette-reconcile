@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}{{ metadata.title or "Datasette" }}: Reconciliation{% endblock %}
+
+{%- block extra_head %}
+{{- super() -}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"
+    integrity="sha512-dfX5uYVXzyU8+KHqj8bjo7UkOdg18PaOtpa48djpNbZHwExddghZ+ZmzWT06R5v6NSk3ZUfsH6FNEDepLx9hPQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+    const RECONCILE_URL = {{ reconcile_url|tojson }};
+</script>
+{% endblock -%}
+
+{% block content %}
+<h1>{{ metadata.title or "Datasette" }} Reconciliation {% if private %} 🔒{% endif %}</h1>
+
+{{ reconcile_config }}
+{% endblock %}
