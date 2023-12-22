@@ -28,28 +28,30 @@ Add a `datasette-reconcile` object under `plugins` in `metadata.json`. This shou
 
 ```json
 {
-    "databases": {
-        "sf-trees": {
-            "tables": {
-                "Street_Tree_List": {
-                    "plugins": {
-                        "datasette-reconcile": {
-                            "id_field": "id",
-                            "name_field": "name",
-                            "type_field": "type",
-                            "type_default": [{
-                              "id": "tree",
-                              "name": "Tree",
-                            }],
-                            "max_limit": 5,
-                            "service_name": "Tree reconciliation",
-                            "view_url": "https://example.com/trees/{{id}}"
-                        }
-                    }
+  "databases": {
+    "sf-trees": {
+      "tables": {
+        "Street_Tree_List": {
+          "plugins": {
+            "datasette-reconcile": {
+              "id_field": "id",
+              "name_field": "name",
+              "type_field": "type",
+              "type_default": [
+                {
+                  "id": "tree",
+                  "name": "Tree"
                 }
+              ],
+              "max_limit": 5,
+              "service_name": "Tree reconciliation",
+              "view_url": "https://example.com/trees/{{id}}"
             }
+          }
         }
+      }
     }
+  }
 }
 ```
 
@@ -110,20 +112,24 @@ The result of the GET or POST `queries` requests described above is a json objec
         "name": "Urbaniak, Regina",
         "score": 53.015232,
         "match": false,
-        "type": [{
-          "id": "person",
-          "name": "Person",
-        }]
+        "type": [
+          {
+            "id": "person",
+            "name": "Person"
+          }
+        ]
       },
       {
         "id": "1127147390",
         "name": "Urbaniak, Jan",
         "score": 52.357353,
         "match": false,
-        "type": [{
-          "id": "person",
-          "name": "Person",
-        }]
+        "type": [
+          {
+            "id": "person",
+            "name": "Person"
+          }
+        ]
       }
     ]
   },
@@ -134,20 +140,24 @@ The result of the GET or POST `queries` requests described above is a json objec
         "name": "Schwanhold, Ernst",
         "score": 86.43497,
         "match": true,
-        "type": [{
-          "id": "person",
-          "name": "Person",
-        }]
+        "type": [
+          {
+            "id": "person",
+            "name": "Person"
+          }
+        ]
       },
       {
         "id": "116362988X",
         "name": "Schwanhold, Nadine",
         "score": 62.04763,
         "match": false,
-        "type": [{
-          "id": "person",
-          "name": "Person",
-        }]
+        "type": [
+          {
+            "id": "person",
+            "name": "Person"
+          }
+        ]
       }
     ]
   }
@@ -165,7 +175,7 @@ select <id_field>, <name_field>
 from <table>
   inner join (
     select "rowid", "rank"
-    from <fts_table> 
+    from <fts_table>
     where <fts_table> MATCH '"test"'
   ) as "a" on <table>."rowid" = a."rowid"
 order by a.rank
@@ -179,6 +189,117 @@ select <id_field>, <name_field>
 from <table>
 where <name_field> like '%test%'
 limit 5
+```
+
+### Extend endpoint
+
+You can also use the reconciliation API [Data extension service](https://www.w3.org/community/reports/reconciliation/CG-FINAL-specs-0.2-20230410/#data-extension-service) to find additional properties for a set of entities, given an ID.
+
+Send a GET request to the `/<db_name>/<table>/-/reconcile/extend/propose` endpoint to find a list of the possible properties you can select. The properties are all the columns in the table (excluding any that have been hidden). An example response would look like:
+
+```json
+{
+  "limit": 5,
+  "type": "Person",
+  "properties": [
+    {
+      "id": "preferredName",
+      "name": "preferredName"
+    },
+    {
+      "id": "professionOrOccupation",
+      "name": "professionOrOccupation"
+    },
+    {
+      "id": "wikidataId",
+      "name": "wikidataId"
+    }
+  ]
+}
+```
+
+Then send a POST request to the `/<db_name>/<table>/-/reconcile` endpoint with an `extend` argument. The `extend` argument should be a JSON object with a set of `ids` to lookup and `properties` to return. For example:
+
+```json
+{
+  "ids": ["10662041X", "1064905412"],
+  "properties": [
+    {
+      "id": "professionOrOccupation"
+    },
+    {
+      "id": "wikidataId"
+    }
+  ]
+}
+```
+
+The endpoint will return a result that looks like:
+
+```json
+{
+  "meta": [
+    {
+      "id": "professionOrOccupation",
+      "name": "professionOrOccupation"
+    },
+    {
+      "id": "wikidataId",
+      "name": "wikidataId"
+    }
+  ],
+  "rows": {
+    "10662041X": {
+      "professionOrOccupation": [
+        {
+          "str": "Doctor"
+        }
+      ],
+      "wikidataId": [
+        {
+          "str": "Q3874347"
+        }
+      ]
+    },
+    "1064905412": {
+      "professionOrOccupation": [
+        {
+          "str": "Architect"
+        }
+      ],
+      "wikidataId": [
+        {
+          "str": "Q3874347"
+        }
+      ]
+    }
+  }
+}
+```
+
+### Suggest endpoints
+
+You can also use the [suggest endpoints](https://www.w3.org/community/reports/reconciliation/CG-FINAL-specs-0.2-20230410/#suggest-services) to get quick suggestions, for example for an auto-complete dropdown menu. The following endpoints are available:
+
+- `/<db_name>/<table>/-/reconcile/suggest/property` - looks up in a list of table columns
+- `/<db_name>/<table>/-/reconcile/suggest/entity` - looks up in a list of table rows
+- `/<db_name>/<table>/-/reconcile/suggest/type` - not currently implemented
+
+Each endpoint takes a `prefix` argument which can be used in a GET request. For example, the GET request `/<db_name>/<table>/-/reconcile/suggest/entity?prefix=abc` will produce a response such as:
+
+```json
+{
+  "result": [
+    {
+      "name": "abc company limited",
+      "id": "Q123456"
+    },
+    {
+      "name": "abc other company limited",
+      "id": "Q123457"
+    }
+  ]
+}
 ```
 
 ## Development
@@ -220,3 +341,12 @@ To run any autoformatting possible:
     hatch publish
     git tag v<VERSION_NUMBER>
     git push origin v<VERSION_NUMBER>
+
+## Acknowledgements
+
+Thanks for [@simonw](https://github.com/simonw/) for developing datasette and the datasette ecosystem.
+
+Other contributions from:
+
+- [@JBPressac](https://github.com/JBPressac/)
+- [@nicokant](https://github.com/nicokant/) - implementation of extend service
