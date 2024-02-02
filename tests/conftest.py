@@ -1,9 +1,12 @@
 import json
 import os
+import re
 
 import pytest
 import sqlite_utils
 from datasette.app import Datasette
+from referencing import Registry
+from referencing.jsonschema import DRAFT7
 
 from datasette_reconcile.settings import SUPPORTED_API_VERSIONS
 
@@ -59,3 +62,20 @@ def ds(tmp_path_factory):
 @pytest.fixture(scope="session")
 def db_path(tmp_path_factory):
     return create_db(tmp_path_factory)
+
+
+def retrieve_schema_from_filesystem(uri: str):
+    recon_schema = re.match(
+        r"https://reconciliation-api\.github\.io/specs/(.*)/schemas/(.*\.json)",
+        uri,
+    )
+    if recon_schema:
+        schema_version = recon_schema.group(1)
+        schema_file = recon_schema.group(2)
+        return DRAFT7.create_resource(get_schema(schema_file)[schema_version])
+
+    msg = f"Unknown URI {uri}"
+    raise ValueError(msg)
+
+
+registry = Registry(retrieve=retrieve_schema_from_filesystem)

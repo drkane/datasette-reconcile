@@ -6,7 +6,7 @@ import jsonschema
 import pytest
 from datasette.app import Datasette
 
-from tests.conftest import get_schema, plugin_metadata
+from tests.conftest import get_schema, plugin_metadata, registry
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ async def test_schema_manifest(schema_version, schema, db_path):
             instance=data,
             schema=schema,
             cls=jsonschema.Draft7Validator,
+            registry=registry,
         )
 
 
@@ -43,6 +44,7 @@ async def test_schema_manifest_extend(schema_version, schema, db_path):
             instance=data,
             schema=schema,
             cls=jsonschema.Draft7Validator,
+            registry=registry,
         )
 
 
@@ -62,6 +64,7 @@ async def test_response_queries_schema_post(schema_version, schema, db_path):
             instance=data,
             schema=schema,
             cls=jsonschema.Draft7Validator,
+            registry=registry,
         )
 
 
@@ -79,6 +82,7 @@ async def test_response_queries_schema_get(schema_version, schema, db_path):
             instance=data,
             schema=schema,
             cls=jsonschema.Draft7Validator,
+            registry=registry,
         )
 
 
@@ -98,6 +102,7 @@ async def test_response_queries_no_results_schema_post(schema_version, schema, d
             instance=data,
             schema=schema,
             cls=jsonschema.Draft7Validator,
+            registry=registry,
         )
 
 
@@ -115,6 +120,7 @@ async def test_response_queries_no_results_schema_get(schema_version, schema, db
             instance=data,
             schema=schema,
             cls=jsonschema.Draft7Validator,
+            registry=registry,
         )
 
 
@@ -132,6 +138,7 @@ async def test_extend_schema_post(schema_version, schema, db_path):
             instance=data,
             schema=schema,
             cls=jsonschema.Draft7Validator,
+            registry=registry,
         )
 
 
@@ -148,6 +155,7 @@ async def test_suggest_property_schema(schema_version, schema, db_path):
             instance=data,
             schema=schema,
             cls=jsonschema.Draft7Validator,
+            registry=registry,
         )
 
 
@@ -164,6 +172,7 @@ async def test_suggest_entity_schema(schema_version, schema, db_path):
             instance=data,
             schema=schema,
             cls=jsonschema.Draft7Validator,
+            registry=registry,
         )
 
 
@@ -180,4 +189,5 @@ async def test_suggest_type_schema(schema_version, schema, db_path):
             instance=data,
             schema=schema,
             cls=jsonschema.Draft7Validator,
+            registry=registry,
         )
