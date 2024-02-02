@@ -16,7 +16,7 @@ SCHEMA_DIR = os.path.join(
 )
 
 
-def create_db(tmp_path_factory):
+def create_db(tmp_path_factory, enable_fts):
     db_directory = tmp_path_factory.mktemp("dbs")
     db_path = db_directory / "test.db"
     db = sqlite_utils.Database(db_path)
@@ -29,6 +29,10 @@ def create_db(tmp_path_factory):
         ],
         pk="id",
     )
+
+    if enable_fts:
+        db["dogs"].enable_fts(["name"])
+
     return db_path
 
 
@@ -55,13 +59,24 @@ def get_schema(filename):
 
 @pytest.fixture(scope="session")
 def ds(tmp_path_factory):
-    ds = Datasette([create_db(tmp_path_factory)], metadata=plugin_metadata())
+    ds = Datasette([create_db(tmp_path_factory, False)], metadata=plugin_metadata())
     return ds
 
 
 @pytest.fixture(scope="session")
 def db_path(tmp_path_factory):
-    return create_db(tmp_path_factory)
+    return create_db(tmp_path_factory, False)
+
+
+@pytest.fixture(scope="session")
+def ds_fts(tmp_path_factory):
+    ds = Datasette([create_db(tmp_path_factory, True)], metadata=plugin_metadata())
+    return ds
+
+
+@pytest.fixture(scope="session")
+def db_path_fts(tmp_path_factory):
+    return create_db(tmp_path_factory, True)
 
 
 def retrieve_schema_from_filesystem(uri: str):
@@ -79,3 +94,10 @@ def retrieve_schema_from_filesystem(uri: str):
 
 
 registry = Registry(retrieve=retrieve_schema_from_filesystem)
+
+
+def do_method(client, method, *args, **kwargs):
+    if method == "post":
+        return client.post(*args, **kwargs)
+    kwargs["params"] = kwargs.pop("data")
+    return client.get(*args, **kwargs)

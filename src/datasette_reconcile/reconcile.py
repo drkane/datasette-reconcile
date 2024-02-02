@@ -251,13 +251,16 @@ class ReconcileAPI:
                 }
             ]
 
-        return {
+        result = {
             "id": str(row[self.config["id_field"]]),
             "name": name,
             "type": type_,
             "score": fuzz.ratio(name_match, query_match),
             "match": name_match == query_match,
         }
+        if self.config["description_field"]:
+            result["description"] = str(row[self.config["description_field"]])
+        return result
 
     async def _service_manifest(self, request):
         # @todo: if type_field is set then get a list of types to use in the "defaultTypes" item below.

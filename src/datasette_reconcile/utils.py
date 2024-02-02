@@ -61,6 +61,8 @@ async def check_config(config, db, table):
     if "name_field" not in config:
         msg = "Name field must be defined to activate reconciliation"
         raise ReconcileError(msg)
+    if "description_field" not in config:
+        config["description_field"] = None
     if "type_field" not in config and "type_default" not in config:
         config["type_default"] = [DEFAULT_TYPE]
 
@@ -87,7 +89,8 @@ async def check_config(config, db, table):
             msg = "View URL must contain {{id}}"
             raise ReconcileError(msg)
 
-    config["fts_table"] = await db.fts_table(table)
+    if "fts_table" not in config:
+        config["fts_table"] = await db.fts_table(table)
 
     # let's show a warning if sqlite3 version is less than 3.30.0
     # full text search results will fail for < 3.30.0 if the table
@@ -111,6 +114,8 @@ def get_select_fields(config):
     select_fields = [config["id_field"], config["name_field"], *config.get("additional_fields", [])]
     if config.get("type_field"):
         select_fields.append(config["type_field"])
+    if config.get("description_field"):
+        select_fields.append(config["description_field"])
     return select_fields
 
 

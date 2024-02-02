@@ -4,7 +4,7 @@ import httpx
 import pytest
 from datasette.app import Datasette
 
-from tests.conftest import plugin_metadata
+from tests.conftest import do_method, plugin_metadata
 
 
 @pytest.mark.asyncio
@@ -123,10 +123,13 @@ async def test_servce_manifest_view_suggest(db_path, suggest_type):
 
 
 @pytest.mark.asyncio
-async def test_response_queries_post(db_path):
+@pytest.mark.parametrize("method", ["post", "get"])
+async def test_response_queries(db_path, method):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
     async with httpx.AsyncClient(app=app) as client:
-        response = await client.post(
+        response = await do_method(
+            client,
+            method,
             "http://localhost/test/dogs/-/reconcile",
             data={"queries": json.dumps({"q0": {"query": "fido"}})},
         )
@@ -144,53 +147,21 @@ async def test_response_queries_post(db_path):
                 "id": "object",
             }
         ]
+        assert "description" not in result
         assert response.headers["Access-Control-Allow-Origin"] == "*"
 
 
 @pytest.mark.asyncio
-async def test_response_queries_get(db_path):
+@pytest.mark.parametrize("method", ["post", "get"])
+async def test_response_queries_no_results(db_path, method):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
     async with httpx.AsyncClient(app=app) as client:
-        queries = json.dumps({"q0": {"query": "fido"}})
-        response = await client.get(f"http://localhost/test/dogs/-/reconcile?queries={queries}")
-        assert 200 == response.status_code
-        data = response.json()
-        assert "q0" in data.keys()
-        assert len(data["q0"]["result"]) == 1
-        result = data["q0"]["result"][0]
-        assert result["id"] == "3"
-        assert result["name"] == "Fido"
-        assert result["score"] == 100
-        assert result["type"] == [
-            {
-                "name": "Object",
-                "id": "object",
-            }
-        ]
-        assert response.headers["Access-Control-Allow-Origin"] == "*"
-
-
-@pytest.mark.asyncio
-async def test_response_queries_no_results_post(db_path):
-    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
-    async with httpx.AsyncClient(app=app) as client:
-        response = await client.post(
+        response = await do_method(
+            client,
+            method,
             "http://localhost/test/dogs/-/reconcile",
             data={"queries": json.dumps({"q0": {"query": "abcdef"}})},
         )
-        assert 200 == response.status_code
-        data = response.json()
-        assert "q0" in data.keys()
-        assert len(data["q0"]["result"]) == 0
-        assert response.headers["Access-Control-Allow-Origin"] == "*"
-
-
-@pytest.mark.asyncio
-async def test_response_queries_no_results_get(db_path):
-    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
-    async with httpx.AsyncClient(app=app) as client:
-        queries = json.dumps({"q0": {"query": "abcdef"}})
-        response = await client.get(f"http://localhost/test/dogs/-/reconcile?queries={queries}")
         assert 200 == response.status_code
         data = response.json()
         assert "q0" in data.keys()
@@ -213,11 +184,12 @@ async def test_response_propose_properties(db_path):
 
 
 @pytest.mark.asyncio
-async def test_response_extend(db_path):
+@pytest.mark.parametrize("method", ["post", "get"])
+async def test_response_extend(db_path, method):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
     async with httpx.AsyncClient(app=app) as client:
         extend = {"extend": json.dumps({"ids": ["1", "2", "3", "4"], "properties": [{"id": "status"}, {"id": "age"}]})}
-        response = await client.post("http://localhost/test/dogs/-/reconcile", data=extend)
+        response = await do_method(client, method, "http://localhost/test/dogs/-/reconcile", data=extend)
         assert 200 == response.status_code
         data = response.json()
 
@@ -343,10 +315,13 @@ async def test_response_suggest_type_1(db_path):
 
 
 @pytest.mark.asyncio
-async def test_response_queries_post_type(db_path):
+@pytest.mark.parametrize("method", ["post", "get"])
+async def test_response_queries_post_type(db_path, method):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name", "type_field": "status"})).app()
     async with httpx.AsyncClient(app=app) as client:
-        response = await client.post(
+        response = await do_method(
+            client,
+            method,
             "http://localhost/test/dogs/-/reconcile",
             data={"queries": json.dumps({"q0": {"query": "fido", "type": "bad dog"}})},
         )
@@ -368,10 +343,13 @@ async def test_response_queries_post_type(db_path):
 
 
 @pytest.mark.asyncio
-async def test_response_queries_post_type_list(db_path):
+@pytest.mark.parametrize("method", ["post", "get"])
+async def test_response_queries_post_type_list(db_path, method):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name", "type_field": "status"})).app()
     async with httpx.AsyncClient(app=app) as client:
-        response = await client.post(
+        response = await do_method(
+            client,
+            method,
             "http://localhost/test/dogs/-/reconcile",
             data={"queries": json.dumps({"q0": {"query": "fido", "type": ["bad dog"]}})},
         )
@@ -393,10 +371,13 @@ async def test_response_queries_post_type_list(db_path):
 
 
 @pytest.mark.asyncio
-async def test_response_queries_post_type_empty(db_path):
+@pytest.mark.parametrize("method", ["post", "get"])
+async def test_response_queries_post_type_empty(db_path, method):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name", "type_field": "status"})).app()
     async with httpx.AsyncClient(app=app) as client:
-        response = await client.post(
+        response = await do_method(
+            client,
+            method,
             "http://localhost/test/dogs/-/reconcile",
             data={"queries": json.dumps({"q0": {"query": "fido", "type": ["good dog"]}})},
         )
@@ -408,10 +389,13 @@ async def test_response_queries_post_type_empty(db_path):
 
 
 @pytest.mark.asyncio
-async def test_response_queries_post_type_not_given(db_path):
+@pytest.mark.parametrize("method", ["post", "get"])
+async def test_response_queries_post_type_not_given(db_path, method):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name", "type_field": "status"})).app()
     async with httpx.AsyncClient(app=app) as client:
-        response = await client.post(
+        response = await do_method(
+            client,
+            method,
             "http://localhost/test/dogs/-/reconcile",
             data={"queries": json.dumps({"q0": {"query": "fido"}})},
         )
@@ -429,4 +413,35 @@ async def test_response_queries_post_type_not_given(db_path):
                 "id": "bad dog",
             }
         ]
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["post", "get"])
+async def test_response_queries_description_field(db_path, method):
+    app = Datasette(
+        [db_path],
+        metadata=plugin_metadata(
+            {
+                "name_field": "name",
+                "description_field": "status",
+            }
+        ),
+    ).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await do_method(
+            client,
+            method,
+            "http://localhost/test/dogs/-/reconcile",
+            data={"queries": json.dumps({"q0": {"query": "fido"}})},
+        )
+        assert 200 == response.status_code
+        data = response.json()
+        assert "q0" in data.keys()
+        assert len(data["q0"]["result"]) == 1
+        result = data["q0"]["result"][0]
+        assert result["id"] == "3"
+        assert result["name"] == "Fido"
+        assert result["score"] == 100
+        assert result["description"] == "bad dog"
         assert response.headers["Access-Control-Allow-Origin"] == "*"

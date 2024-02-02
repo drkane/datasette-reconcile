@@ -148,7 +148,7 @@ async def test_plugin_configuration_use_type_default(ds):
 
 
 @pytest.mark.asyncio
-async def test_plugin_configuration_use_fts_table(ds):
+async def test_plugin_configuration_use_fts_table_none(ds):
     config = await check_config(
         {
             "name_field": "name",
@@ -161,6 +161,85 @@ async def test_plugin_configuration_use_fts_table(ds):
             ],
         },
         ds.get_database("test"),
+        "dogs",
+    )
+    assert config["fts_table"] is None
+
+
+@pytest.mark.asyncio
+async def test_plugin_configuration_use_fts_table_config(ds):
+    config = await check_config(
+        {
+            "name_field": "name",
+            "id_field": "id",
+            "fts_table": "dog_fts",
+            "type_default": [
+                {
+                    "name": "Dog",
+                    "id": "dog",
+                }
+            ],
+        },
+        ds.get_database("test"),
+        "dogs",
+    )
+    assert config["fts_table"] == "dog_fts"
+
+
+@pytest.mark.asyncio
+async def test_plugin_configuration_ignore_fts_table(ds_fts):
+    config = await check_config(
+        {
+            "name_field": "name",
+            "id_field": "id",
+            "fts_table": "dog_blah_fts",
+            "type_default": [
+                {
+                    "name": "Dog",
+                    "id": "dog",
+                }
+            ],
+        },
+        ds_fts.get_database("test"),
+        "dogs",
+    )
+    assert config["fts_table"] == "dog_blah_fts"
+
+
+@pytest.mark.asyncio
+async def test_plugin_configuration_use_fts_table(ds_fts):
+    config = await check_config(
+        {
+            "name_field": "name",
+            "id_field": "id",
+            "type_default": [
+                {
+                    "name": "Dog",
+                    "id": "dog",
+                }
+            ],
+        },
+        ds_fts.get_database("test"),
+        "dogs",
+    )
+    assert config["fts_table"] == "dogs_fts"
+
+
+@pytest.mark.asyncio
+async def test_plugin_configuration_use_fts_table_ignore(ds_fts):
+    config = await check_config(
+        {
+            "name_field": "name",
+            "id_field": "id",
+            "fts_table": None,
+            "type_default": [
+                {
+                    "name": "Dog",
+                    "id": "dog",
+                }
+            ],
+        },
+        ds_fts.get_database("test"),
         "dogs",
     )
     assert config["fts_table"] is None
@@ -192,3 +271,28 @@ async def test_view_url_no_id(ds):
             ds.get_database("test"),
             "dogs",
         )
+
+
+@pytest.mark.asyncio
+async def test_plugin_configuration_use_description_field(ds):
+    config = await check_config(
+        {
+            "name_field": "name",
+            "description_field": "status",
+        },
+        ds.get_database("test"),
+        "dogs",
+    )
+    assert config["description_field"] == "status"
+
+
+@pytest.mark.asyncio
+async def test_plugin_configuration_no_description_field(ds):
+    config = await check_config(
+        {
+            "name_field": "name",
+        },
+        ds.get_database("test"),
+        "dogs",
+    )
+    assert config["description_field"] is None
