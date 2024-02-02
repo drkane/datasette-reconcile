@@ -220,9 +220,11 @@ class ReconcileAPI:
         if "x-forwarded-proto" in request.headers:
             scheme = request.headers.get("x-forwarded-proto")
 
-        service_url = (
-            f'{scheme}://{request.host}{self.datasette.setting("base_url")}/{self.database}/{self.table}/-/reconcile'
-        )
+        base_url = f'{scheme}://{request.host}{self.datasette.setting("base_url")}'
+        if not base_url.endswith("/"):
+            base_url += "/"
+
+        service_url = f"{base_url}{self.database}/{self.table}/-/reconcile"
 
         view_url = self.config.get("view_url")
         if not view_url:

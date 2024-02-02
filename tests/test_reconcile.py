@@ -101,8 +101,24 @@ async def test_servce_manifest_view_extend(db_path):
         assert 200 == response.status_code
         data = response.json()
         assert "extend" in data
-        assert data["extend"]["propose_properties"]["service_url"] == "http://localhost//test/dogs/-/reconcile"
+        assert data["extend"]["propose_properties"]["service_url"] == "http://localhost/test/dogs/-/reconcile"
         assert data["extend"]["property_settings"][3]["name"] == "status"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("suggest_type", ["entity", "type", "property"])
+async def test_servce_manifest_view_suggest(db_path, suggest_type):
+    app = Datasette(
+        [db_path],
+        metadata=plugin_metadata({"name_field": "name"}),
+    ).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.get("http://localhost/test/dogs/-/reconcile")
+        assert 200 == response.status_code
+        data = response.json()
+        assert "extend" in data
+        assert data["suggest"][suggest_type]["service_url"] == "http://localhost/test/dogs/-/reconcile"
+        assert data["suggest"][suggest_type]["service_path"] == f"/suggest/{suggest_type}"
         assert len(data["suggest"]) == 3
 
 
