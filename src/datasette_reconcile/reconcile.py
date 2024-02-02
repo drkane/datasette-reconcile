@@ -211,6 +211,8 @@ class ReconcileAPI:
                 params["search_query"] = f"%{query['query']}%"
 
             types = query.get("type", [])
+            if not isinstance(types, list) and types:
+                types = [types]
             type_field = self.config.get("type_field")
             if types and type_field:
                 where_clauses.append(
