@@ -278,13 +278,130 @@ async def test_response_suggest_property(db_path):
 
 
 @pytest.mark.asyncio
-async def test_response_suggest_type(db_path):
+async def test_response_suggest_type_default(db_path):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
     async with httpx.AsyncClient(app=app) as client:
-        response = await client.get("http://localhost/test/dogs/-/reconcile/suggest/type?prefix=a")
+        response = await client.get("http://localhost/test/dogs/-/reconcile/suggest/type?prefix=obj")
+        assert 200 == response.status_code
+        data = response.json()
+
+        assert "result" in data
+        assert len(data["result"]) == 1
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+@pytest.mark.asyncio
+async def test_response_suggest_type_default_empty(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.get("http://localhost/test/dogs/-/reconcile/suggest/type?prefix=xxx")
         assert 200 == response.status_code
         data = response.json()
 
         assert "result" in data
         assert len(data["result"]) == 0
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+@pytest.mark.asyncio
+async def test_response_suggest_type_empty(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name", "type_field": "status"})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.get("http://localhost/test/dogs/-/reconcile/suggest/type?prefix=xxx")
+        assert 200 == response.status_code
+        data = response.json()
+
+        assert "result" in data
+        assert len(data["result"]) == 0
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+@pytest.mark.asyncio
+async def test_response_suggest_type_all(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name", "type_field": "status"})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.get("http://localhost/test/dogs/-/reconcile/suggest/type?prefix=dog")
+        assert 200 == response.status_code
+        data = response.json()
+
+        assert "result" in data
+        assert len(data["result"]) == 2
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+@pytest.mark.asyncio
+async def test_response_suggest_type_1(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name", "type_field": "status"})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.get("http://localhost/test/dogs/-/reconcile/suggest/type?prefix=good")
+        assert 200 == response.status_code
+        data = response.json()
+
+        assert "result" in data
+        assert len(data["result"]) == 1
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+@pytest.mark.asyncio
+async def test_response_queries_post_type(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name", "type_field": "status"})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.post(
+            "http://localhost/test/dogs/-/reconcile",
+            data={"queries": json.dumps({"q0": {"query": "fido", "type": ["bad dog"]}})},
+        )
+        assert 200 == response.status_code
+        data = response.json()
+        assert "q0" in data.keys()
+        assert len(data["q0"]["result"]) == 1
+        result = data["q0"]["result"][0]
+        assert result["id"] == "3"
+        assert result["name"] == "Fido"
+        assert result["score"] == 100
+        assert result["type"] == [
+            {
+                "name": "bad dog",
+                "id": "bad dog",
+            }
+        ]
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+@pytest.mark.asyncio
+async def test_response_queries_post_type_empty(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name", "type_field": "status"})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.post(
+            "http://localhost/test/dogs/-/reconcile",
+            data={"queries": json.dumps({"q0": {"query": "fido", "type": ["good dog"]}})},
+        )
+        assert 200 == response.status_code
+        data = response.json()
+        assert "q0" in data.keys()
+        assert len(data["q0"]["result"]) == 0
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+@pytest.mark.asyncio
+async def test_response_queries_post_type_not_given(db_path):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name", "type_field": "status"})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.post(
+            "http://localhost/test/dogs/-/reconcile",
+            data={"queries": json.dumps({"q0": {"query": "fido"}})},
+        )
+        assert 200 == response.status_code
+        data = response.json()
+        assert "q0" in data.keys()
+        assert len(data["q0"]["result"]) == 1
+        result = data["q0"]["result"][0]
+        assert result["id"] == "3"
+        assert result["name"] == "Fido"
+        assert result["score"] == 100
+        assert result["type"] == [
+            {
+                "name": "bad dog",
+                "id": "bad dog",
+            }
+        ]
         assert response.headers["Access-Control-Allow-Origin"] == "*"

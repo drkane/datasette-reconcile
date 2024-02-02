@@ -84,9 +84,37 @@ class ReconcileAPI:
         return self._response({"result": properties})
 
     async def suggest_type(self, request):
-        prefix = request.args.get("prefix")  # noqa: F841
+        prefix = request.args.get("prefix")
 
-        return self._response({"result": []})
+        default_type = self.config.get("type_default", [DEFAULT_TYPE])
+        type_field = self.config.get("type_field")
+        if type_field:
+            query_sql = """
+                SELECT CASE WHEN {type_field} IS NULL THEN '{default_type}' ELSE {type_field} END as type
+                FROM {from_clause}
+                GROUP BY type
+                """.format(  # noqa: S608
+                type_field=escape_sqlite(type_field),
+                default_type=default_type[0]["id"],
+                from_clause=escape_sqlite(self.table),
+            )
+            types = [
+                {
+                    "id": r["type"],
+                    "name": r["type"],
+                }
+                for r in await self.db.execute(query_sql)
+            ]
+        else:
+            types = default_type
+
+        return self._response(
+            {
+                "result": [
+                    type_ for type_ in types if prefix.lower() in type_["id"] or prefix.lower() in type_["name"]
+                ][:DEFAULT_LIMIT]
+            }
+        )
 
     async def _get_properties(self):
         column_descriptions = self.datasette.table_metadata(self.database, self.table).get("columns") or {}
@@ -182,6 +210,16 @@ class ReconcileAPI:
                 )
                 params["search_query"] = f"%{query['query']}%"
 
+            types = query.get("type", [])
+            type_field = self.config.get("type_field")
+            if types and type_field:
+                where_clauses.append(
+                    "{type_field} in ({types})".format(
+                        type_field=escape_sqlite(type_field),
+                        types=",".join([f"'{t}'" for t in types]),
+                    )
+                )
+
             query_sql = """
                 SELECT {select_fields}
                 FROM {from_clause}
@@ -202,8 +240,14 @@ class ReconcileAPI:
         name_match = str(name).lower().strip()
         query_match = str(query["query"]).lower().strip()
         type_ = self.config.get("type_default", [DEFAULT_TYPE])
-        if self.config.get("type_field") and self.config["type_field"] in row:
-            type_ = [row[self.config["type_field"]]]
+        type_field = self.config.get("type_field")
+        if type_field and type_field in dict(row):
+            type_ = [
+                {
+                    "id": row[type_field],
+                    "name": row[type_field],
+                }
+            ]
 
         return {
             "id": str(row[self.config["id_field"]]),
@@ -243,10 +287,14 @@ class ReconcileAPI:
             "defaultTypes": self.config.get("type_default", [DEFAULT_TYPE]),
             "view": {"url": view_url},
             "extend": {
-                "propose_properties": {
-                    "service_url": service_url,
-                    "service_path": "/extend/propose",
-                },
+                "propose_properties": (
+                    {
+                        "service_url": service_url,
+                        "service_path": "/extend/propose",
+                    }
+                    if self.api_version in ["0.1", "0.2"]
+                    else True
+                ),
                 "property_settings": [
                     {
                         "name": p["id"],
