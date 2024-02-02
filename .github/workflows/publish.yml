@@ -4,9 +4,13 @@ on:
   release:
     types: [created]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    environment: release
     strategy:
       max-parallel: 4
       matrix:
@@ -29,6 +33,7 @@ jobs:
           hatch run test
   lint:
     runs-on: ubuntu-latest
+    environment: release
     strategy:
       max-parallel: 4
       matrix:
@@ -49,6 +54,9 @@ jobs:
           hatch run lint:style
   deploy:
     runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
     needs: [test, lint]
     steps:
       - uses: actions/checkout@v3
@@ -61,10 +69,8 @@ jobs:
         run: |
           pip install -e .
           pip install hatch
-      - name: Publish
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+      - name: Build
         run: |
           hatch build
-          hatch publish -y
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
