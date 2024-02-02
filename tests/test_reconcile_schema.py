@@ -74,7 +74,7 @@ async def test_response_queries_schema(schema_version, schema, db_path, method):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("schema_version, schema", get_schema("reconciliation-result-batch.json").items())
 @pytest.mark.parametrize("method", ["post", "get"])
-async def test_response_queries_schema_get_description_field(schema_version, schema, db_path, method):
+async def test_response_queries_schema_description_field(schema_version, schema, db_path, method):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name", "description_field": "status"})).app()
     async with httpx.AsyncClient(app=app) as client:
         response = await do_method(

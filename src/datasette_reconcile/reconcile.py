@@ -215,12 +215,30 @@ class ReconcileAPI:
                 types = [types]
             type_field = self.config.get("type_field")
             if types and type_field:
+                type_values = {f"type_value{index}": t for index, t in enumerate(types)}
                 where_clauses.append(
-                    "{type_field} in ({types})".format(
+                    "{type_field} in ({type_values})".format(
                         type_field=escape_sqlite(type_field),
-                        types=",".join([f"'{t}'" for t in types]),
+                        type_values=", ".join([f":{value}" for value in type_values.keys()]),
                     )
                 )
+                params = {**params, **type_values}
+
+            if query.get("properties"):
+                for index, prop in enumerate(query["properties"]):
+                    if prop["v"]:
+                        property_id = prop["pid"]
+                        property_values = prop["v"]
+                        if not isinstance(property_values, list):
+                            property_values = [property_values]
+                        property_values = {f"property_value{index}_{i}": v for i, v in enumerate(property_values)}
+                        where_clauses.append(
+                            "{property_id} in ({property_values})".format(
+                                property_id=escape_sqlite(property_id),
+                                property_values=", ".join([f":{value}" for value in property_values.keys()]),
+                            )
+                        )
+                        params = {**params, **property_values}
 
             query_sql = """
                 SELECT {select_fields}
@@ -238,28 +256,35 @@ class ReconcileAPI:
             yield query_id, query_results
 
     def _get_query_result(self, row, query):
-        name = str(row[self.config["name_field"]])
+        row = dict(row)
+
+        name = str(row.pop(self.config["name_field"]))
         name_match = str(name).lower().strip()
         query_match = str(query["query"]).lower().strip()
+
         type_ = self.config.get("type_default", [DEFAULT_TYPE])
         type_field = self.config.get("type_field")
-        if type_field and type_field in dict(row):
+        if type_field and type_field in row:
+            type_value = row.pop(type_field)
             type_ = [
                 {
-                    "id": row[type_field],
-                    "name": row[type_field],
+                    "id": type_value,
+                    "name": type_value,
                 }
             ]
 
+        id_value = str(row.pop(self.config["id_field"]))
+
         result = {
-            "id": str(row[self.config["id_field"]]),
+            "id": id_value,
             "name": name,
             "type": type_,
             "score": fuzz.ratio(name_match, query_match),
             "match": name_match == query_match,
         }
         if self.config["description_field"]:
-            result["description"] = str(row[self.config["description_field"]])
+            result["description"] = str(row.pop(self.config["description_field"]))
+
         return result
 
     async def _service_manifest(self, request):

@@ -26,6 +26,7 @@ def create_db(tmp_path_factory, enable_fts):
             {"id": 2, "name": "Pancakes", "age": 4, "status": "bad dog"},
             {"id": 3, "name": "Fido", "age": 3, "status": "bad dog"},
             {"id": 4, "name": "Scratch", "age": 3, "status": "good dog"},
+            {"id": 5, "name": "Pancakes", "age": 5, "status": "bad dog"},
         ],
         pk="id",
     )

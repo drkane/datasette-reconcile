@@ -153,6 +153,64 @@ async def test_response_queries(db_path, method):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", ["post", "get"])
+async def test_response_queries_with_properties(db_path, method):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await do_method(
+            client,
+            method,
+            "http://localhost/test/dogs/-/reconcile",
+            data={"queries": json.dumps({"q0": {"query": "pancakes", "properties": [{"pid": "age", "v": 5}]}})},
+        )
+        assert 200 == response.status_code
+        data = response.json()
+        assert "q0" in data.keys()
+        assert len(data["q0"]["result"]) == 1
+        result = data["q0"]["result"][0]
+        assert result["id"] == "5"
+        assert result["name"] == "Pancakes"
+        assert result["score"] == 100
+        assert result["type"] == [
+            {
+                "name": "Object",
+                "id": "object",
+            }
+        ]
+        assert "description" not in result
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["post", "get"])
+async def test_response_queries_without_properties(db_path, method):
+    app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await do_method(
+            client,
+            method,
+            "http://localhost/test/dogs/-/reconcile",
+            data={"queries": json.dumps({"q0": {"query": "pancakes"}})},
+        )
+        assert 200 == response.status_code
+        data = response.json()
+        assert "q0" in data.keys()
+        assert len(data["q0"]["result"]) == 2
+        result = data["q0"]["result"][0]
+        assert result["id"] in ("2", "5")
+        assert result["name"] == "Pancakes"
+        assert result["score"] == 100
+        assert result["type"] == [
+            {
+                "name": "Object",
+                "id": "object",
+            }
+        ]
+        assert "description" not in result
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["post", "get"])
 async def test_response_queries_no_results(db_path, method):
     app = Datasette([db_path], metadata=plugin_metadata({"name_field": "name"})).app()
     async with httpx.AsyncClient(app=app) as client:
